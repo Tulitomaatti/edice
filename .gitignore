@@ -16,3 +16,12 @@
 *.exe
 *.out
 *.app
+
+# compiled stuff.
+*.hex
+*.bin
+*.lst
+*.map
+*.d 
+*.srec 
+*.elf 

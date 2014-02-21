@@ -1,1 +1,0 @@
-blinktest.o: blinktest.c
