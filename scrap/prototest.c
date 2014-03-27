@@ -11,11 +11,15 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include <avr/sleep.h>
+
+
 #define HIGH_BITS 0xF0
 #define LOW_BITS 0x0F
 
 volatile static uint8_t display;
 volatile static uint8_t encoder_state; 
+static uint8_t rng_inited;
 
 /* seems to work better than fancy logic math. */
 static const uint8_t transition_table[16] = {0,  1, -1,  0,  
@@ -49,6 +53,11 @@ ab -> ab meaning
 */
 
 void pinSetup() {
+
+    // Timer1 (16bit) to 1024 prescale & enable. (XXXX X000 disables.)
+    TCCR1B |= 0x01;
+    rng_inited = 0;
+
     /*  DDR   == data direction
         PORT  == write to port, or enable pull up resistors
         PIN   == read a pin
@@ -62,6 +71,8 @@ void pinSetup() {
        resistors for pins D0 ~ D3 (0000 1111 = 0x0F */
     DDRD = 0x00;  
     PORTD = 0xFF; // 1s enable internal pull-up resistor(s)
+
+
 
 
 }
@@ -108,6 +119,19 @@ uint8_t readEncoderState() {
     return encoder_state;
 }
 
+/*
+uint8_t checkModeButton() {
+    static uint16_t timeout = 1000; 
+    uint16_t timeout_start;
+    // 1100 0101
+    TCCR1B |= 0x05;
+    TCNT1 = 0; 
+    timeout_start = TCNT1;
+    
+
+}
+*/
+
 uint8_t decodeEncodersState(uint8_t state, uint8_t encoder_select) {
     /* let's look only at the last 4 bits. */
     uint8_t index = 0;
@@ -124,6 +148,16 @@ uint8_t decodeEncodersState(uint8_t state, uint8_t encoder_select) {
 
 void ledDisplay(uint8_t x) {
     PORTB = x;
+}
+
+void displayflip() {
+    display = ~display;
+    ledDisplay(display);
+}
+
+uint8_t checkFlipButton() {
+    return (0x01 & (PIND >> 6));
+
 }
 
 int main() {
@@ -144,7 +178,27 @@ int main() {
 
         // bit shift by one to make them a bit less sensitive. 
         display = ((enc0_counter >> 1) << 4) | ((enc1_counter >> 1) & LOW_BITS); 
+
         
-        ledDisplay( display );
+        if (!checkFlipButton()) {
+            if (!rng_inited) {
+
+                displayflip(); 
+                _delay_ms(1000);
+                srandom(TCNT1);
+                rng_inited = 1;
+                TCCR1B = 0x00;  // stop timer to save power?
+
+            } else {
+                ledDisplay( random() );
+                _delay_ms(100);
+            }
+        } else {
+            ledDisplay( display );
+        }
     }
 }
+
+
+
+
