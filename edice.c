@@ -1,10 +1,29 @@
-/* edice test/main file */
+/* edice test/main file 
+ Might be OS X specific, but should work with any avr-libc / avr-gcc combination. 
+ ...which means that Atmel's own AVR studio might want different code. 
+
+*/
+
+/* 
+TODO: 
+
+Button/switch state/debouncing helpers
+
+Timer interrupts for 
+    * Polling button states (pure interrupts make debouncing hard I hear?)
+    * Going to power saving/sleep/off modes. 
+
+Display Control
+    * Display Logic
+    * Serial helpers (7-segment driver or SIPO registers?)
+
+*/ 
 
 /* ps. i have no idea about coding for hardware. 
    ==> might be a better idea to make a software implementation first. */
 
-#define F_CPU 16000000UL /* 16MHz for atmega328 */
-#define BAUD 9600
+#define __AVR_ATmega328P__
+#define F_CPU 16000000UL /* 16MHz for atmega328p */
 
 #define BAD_SEED 0
 #define RNG_NOT_READY 0
@@ -12,14 +31,16 @@
 
 /* #include "/usr/local/CrossPack-AVR/avr/include/avr/interrupt.h" */
 
-#include <avr/interrupt.h>
-#include <avr/power.h>
 /* #include <avr/sleep.h> */
-#include <util/delay.h>
-#include <util/setbaud.h>
-#include <stdlib.h>
+
 #include <avr/io.h>
+#include <avr/cpufunc.h>
+#include <avr/interrupt.h>
+#include <util/delay.h>
+
+#include <stdlib.h>
 #include <stdint.h>
+
 /* #include <time.h> time.h is OS stuff - AVR's don't really have an OS. Use io.h stuff and timers. */ 
 
 
@@ -27,12 +48,12 @@
    other than using file scope variables. */
 uint32_t seed = BAD_SEED;
 char rng_ready = 0;
-clock_t run_time = 0; 
+uint32_t run_time = 0; 
 
 
-void RNGPreInit(clock_t run_time) {
+void RNGPreInit(uint32_t run_time) {
 
-    /* TODO: Read something from ADC inputs  */     
+    /* TODO: Read something from ADC inputs  */
 
     seed += (uint32_t) (clock() - run_time);
 }
@@ -40,7 +61,9 @@ void RNGPreInit(clock_t run_time) {
 int main() {
     run_time = clock();
 
-    /* do whatever pin initialization needed to be done before touching rng */
+
+
+    /* do whatever pin/ADC initialization needed to be done before touching rng */
 
     RNGPreInit(run_time);
 	return 0;

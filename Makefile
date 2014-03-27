@@ -1,6 +1,6 @@
 PRG = edice
 OBJ = edice.o
-MCU_TARGET = atmega328
+MCU_TARGET = atmega328p
 OPTIMIZE = -O2
 
 DEFS = 

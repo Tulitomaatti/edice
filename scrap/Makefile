@@ -1,4 +1,4 @@
-PRG = 8bit-display
+PRG = 7-seg
 OBJ = $(PRG).o
 MCU_TARGET = atmega328p
 OPTIMIZE = -O2

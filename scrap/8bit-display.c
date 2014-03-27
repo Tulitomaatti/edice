@@ -13,7 +13,6 @@
 #include <avr/interrupt.h>
 #include <stdlib.h>
 
-
 /* These are pins 2 to 11 on arduino uno. */
 /* uint8_t pins[10] = {PORTD2, PORTD3, PORTD4, PORTD5, PORTD6, PORTD7, PORTB0, PORTB1, PORTB2, PORTB3};
    ^ wasn't a good idea, can't access pins straight: must use the whole port. 
@@ -26,9 +25,9 @@ uint8_t pinInit() {
     DDRB = 0xFF;
     DDRD = 0xFF; 
 
+
     PORTB = 0x00;
     PORTD = 0x00; 
-
 
     // Use Vcc as the reference voltage in ad conversion. 
     ADMUX |= (1 << REFS0); // vref = avcc
@@ -43,7 +42,6 @@ uint8_t pinInit() {
     /* set pin 13 to input  */
     /* pin 13 is PORTB5, already set. */
     /* PCINT5 is on pin 13. */
-
 
     // SREG |= 1 << SREG_I; // This supposedly does what sei() does. 
 
@@ -119,14 +117,10 @@ void displayflip() {
 
 
 ISR(PCINT0_vect, ISR_NAKED) {
-    int pin = 0;
-    char pressed = 0; 
     cli();
     _delay_ms(100);
-
     // for (pin = 0; pin < 8; pin++) {
     //     pressed = (PINB >> pin) & 1;
-
     //     switch (pin) {
     //         case PCINT0:
     //             pin++;
@@ -151,23 +145,21 @@ ISR(PCINT0_vect, ISR_NAKED) {
     //         case PCINT7:
     //             pin++;
     //     }
-
     // }
 
-    if (!((PINB >> 4) & 1)) 
+    if (!((PINB >> 4) & 1))  {
         if (((PINB >> 5) & 1)) {
             displayflip();
             reti();
         }
-    else {  
+        
+    } else {  
         _delay_ms(100); // software debounce
         current_number = rand();
         display10bit(current_number);
         reti();
     }
     reti();
-
-
 }
 
 
