@@ -4,9 +4,10 @@
 
 #define F_CPU 1000000UL
 #define __AVR_ATtiny2313__
-
+#define BAUDS 9600
 
 #include <avr/io.h>
+#include <avr/interrupt.h>
 #include <util/delay.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -16,6 +17,8 @@
 
 #define HIGH_BITS 0xF0
 #define LOW_BITS 0x0F
+
+
 
 volatile static uint8_t display;
 volatile static uint8_t encoder_state; 
@@ -51,12 +54,14 @@ ab -> ab meaning
 11 10 cw
 11 11 no movement 
 */
+    
 
 void pinSetup() {
 
     // Timer1 (16bit) to 1024 prescale & enable. (XXXX X000 disables.)
     TCCR1B |= 0x01;
     rng_inited = 0;
+
 
     /*  DDR   == data direction
         PORT  == write to port, or enable pull up resistors
@@ -68,13 +73,35 @@ void pinSetup() {
     PORTB = 0x00; 
 
     /* Use port d for input, and enable internal pull-up
-       resistors for pins D0 ~ D3 (0000 1111 = 0x0F */
-    DDRD = 0x00;  
-    PORTD = 0xFF; // 1s enable internal pull-up resistor(s)
+       resistors for pins D0 ~ D3 (0000 1111 = 0x0F 
+
+    actually, use pd0 and pd1 as output. 
+       */
+    DDRD = 0x03;  // 0000 0011 
+    PORTD |= 0xFC; // 1s enable internal pull-up resistor(s)
 
 
+}
 
+// from attiny data shset
+void USARTInit(uint16_t baud) {
+    // set baud rate
+    UBRRH = baud >> 8;
+    UBRRL = baud;
 
+    // enable reciever/transitte
+    UCSRB = (1 << RXEN) | (1 << TXEN);
+
+    //set format for data frame: 8 data bits, 2 stop bits:
+    UCSRC = (1 << USBS) | (3 << UCSZ0);
+}
+
+void USARTTransmit(uint8_t data) {
+    // wait for transmit buffer to free up
+    while (! (UCSRA & (1 << UDRE)));
+
+    // put data in the buffer. this sends the data.
+    UDR = data;
 }
 
 /*
@@ -113,8 +140,10 @@ uint8_t readEncoderState() {
    // uint8_t aux = PIND & 0x33;
    // aux = PIND & 0x33;
 
-    encoder_state = ((encoder_state << 2) & 0xCC) | (PIND & 0x33); 
-    _delay_ms(5); // software debounce    
+    // encoder_state = ((encoder_state << 2) & 0xCC) | (PIND & 0x33); 
+    encoder_state = ((encoder_state << 2) & 0xCC) | (PIND & 0x3C); 
+   
+    // _delay_ms(5); // software debounce    
     // encoder_state |= aux;
     return encoder_state;
 }
@@ -163,9 +192,12 @@ uint8_t checkFlipButton() {
 int main() {
     static uint8_t enc0_counter = 0;
     static uint8_t enc1_counter = 0;
+    uint8_t random_aux;
     // int i = 0;
     display = 0;
     pinSetup();
+
+    USARTInit(BAUDS);
 
 
     while (1) {
@@ -190,7 +222,10 @@ int main() {
                 TCCR1B = 0x00;  // stop timer to save power?
 
             } else {
+                random_aux = (uint8_t) random();
                 ledDisplay( random() );
+                USARTTransmit(random_aux);
+
                 _delay_ms(100);
             }
         } else {
