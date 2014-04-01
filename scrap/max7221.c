@@ -10,48 +10,48 @@
 
 static const uint8_t numbers[12] = {NUMBERS};
 static const uint8_t digits[8] = {DIGITS};
-static uint8_t i;
-static uint8_t leading_zero_suppression = 1;
+static uint8_t leading_zero_suppression = 0;
 
 /* Functions for sending data */
-void maxSend16bits(uint8_t data) {
-    uint8_t i, bit;
-    // MAX7221: put ~CS (chip select) pin low to load data
-    DDRB |= _BV(CLK_PIN) | _BV(DATA_PIN) | _BV(CS_PIN);
+void maxSend16bits(uint16_t data) {
+    uint8_t i;
+// clear clock and load bit
+    PORTB &= ~(_BV(CLK_PIN) | _BV(LOAD_PIN));
 
-    PORTB &= ~_BV(CS_PIN); 
-    PORTB &= ~_BV(CLK_PIN);
-
-    // Latch data on rising edge of load/cs
-    PORTB |= _BV(CS_PIN);
-
-    // clock in data by bitbanging clk and data
-
+    // bit bang data in. 
     for (i = 0; i < 16; i++) {
+        // MSB goes in first. 
+        if ( (0x01 & (data >> (15-i))) ) {
+            PORTB |= _BV(DATA_PIN); 
+        } else {
+            PORTB &= ~_BV(DATA_PIN);
+        }
 
-        // set data pin and wait.
-        bit = 0x01 & (data >> i);
-        if (bit) PORTB |= _BV(DATA_PIN);
-        else PORTB &= ~_BV(DATA_PIN);
+        // seems to be stable even without this. 
+        _delay_loop_1(DATA_DELAY);
 
-        // clock data in 
-        _delay_us(CLK_PULSE);
+        // Tick Tock
         PORTB |= _BV(CLK_PIN);
-
-        // set down clock after some time
-        _delay_us(CLK_PULSE);
-        PORTB &= ~_BV(CLK_PIN);
+        _delay_loop_2(CLK_PULSE * HICLOCK_ADJUST); // makes clock look nicer on scope.
+        PORTB &= ~_BV(CLK_PIN);    
     }
 
-    // 50 ns delay required before next one
-    _delay_us(LOAD_DELAY);
+    // set load bit to latch data. 
+    PORTB |= 0x01;
+    
+    // clear clock and data (not mandatory, maybe.)
+    _delay_loop_1(CLK_PULSE); // might work without this one.
+    PORTB &= ~(_BV(DATA_PIN) | _BV(CLK_PIN));
+    _delay_loop_1(CLK_PULSE); // should work without this one.
+
 }
 
 void maxSend8bits(uint8_t data, uint8_t address) {
-    uint16_t aux = 0;
-    aux = (address << 8) | data;
-    maxSend16bits(aux);
+    // uint16_t aux = 0;
+    // aux = (address << 8) | data;
+    maxSend16bits((address << 8) | data);
 }
+
 
 void maxSetup() {
     // something ? 
@@ -67,23 +67,14 @@ void maxSetup() {
     PORTB = 0xFF;
 
     maxExitTestMode();
-    maxSend8bits(0xff, SCAN_LIMIT_ADDR);
+    maxSend8bits(0xFF, SCAN_LIMIT_ADDR);
     maxSetDecodeMode(0);
-    maxIntensity(0);
+    maxSetIntensity(0);
     maxUnShutdown();
-
-    // init some numbers in for testing: 
-    for (i = 0; i < 8; i++) {
-        maxDisplayNumber(i, i);
-    }
-
-    maxDisplayNumber(3, BLANK);
-    maxDisplayNumber(4, TEST);
-
 
 }
 
-void maxIntensity(uint8_t intensity) {
+void maxSetIntensity(uint8_t intensity) {
     // intensity is controller by last 4 bits, 0000 being minimum. 
     maxSend8bits(intensity, INTENSITY_ADDR);
 }
@@ -116,31 +107,38 @@ void maxDisplayNumber(uint8_t number, uint8_t digit) {
     maxSend8bits(numbers[number], digits[digit-1]); 
 }
 
-void maxDisplayFigure(uint32_t figure) {
-    // prune figure to 0 ~ 9999 9999
-    uint8_t digits = numberOfDecimalDigits(figure);
-    figure = figure % 100000000;
-
-    if (leading_zero_suppression) {
-        for (i = 8; i > digits; i--) {
-            maxDisplayNumber(BLANK, i);
-        }
-        for (i = 0; i < digits; i++) {
-            maxDisplayNumber(figure % 10, i);
-            figure /= 10; 
-        }
-    } else {
-        for (i = 0; i < 8; i++) {
-            maxDisplayNumber(figure % 10, i);
-            figure /= 10; 
-        }
+void maxDisplayFigure(uint8_t numbers[8]) {
+    uint8_t i;
+    for (i = 0; i < 8; i++) {
+        maxDisplayNumber( numbers[i], digits[i]);
     }
+
+
+    // crashes on attiny2313? stack space? 
+    // prune figure to 0 ~ 9999 9999
+    // uint8_t digits = numberOfDecimalDigits(figure);
+    // figure = figure % 100000000;
+
+    // if (leading_zero_suppression) {
+    //     for (i = 8; i > digits; i--) {
+    //         maxDisplayNumber(BLANK, i);
+    //     }
+    //     for (i = 0; i < digits; i++) {
+    //         maxDisplayNumber(figure % 10, i);
+    //         figure /= 10; 
+    //     }
+    // } else {
+    //     for (i = 0; i < 8; i++) {
+    //         maxDisplayNumber(figure % 10, i);
+    //         figure /= 10; 
+    //     }
+    // }
 
 
 }
 
 uint8_t numberOfDecimalDigits(uint32_t x) {
-    uint8_t n = 1;
+    uint8_t n, i;
     for (i = 10, n = 1; i < 1000000000; i *= 10, n++) {
         if (x < i) return n;
     }

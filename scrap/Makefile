@@ -1,4 +1,4 @@
-PRG = serialtest
+PRG = maxtest
 OBJ = $(PRG).o
 # MCU_TARGET = atmega328p
 MCU_TARGET = attiny2313

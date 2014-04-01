@@ -1,6 +1,12 @@
+/* maxtest */
 /* headers for max7221/7219 */
+#define __AVR_ATtiny2313__
+#define F_CPU 1000000UL
+
 #include <inttypes.h>
 #include <avr/io.h>
+#include <util/delay.h>
+
 
 #ifndef MAX7221_H
 #define MAX7221_H
@@ -9,11 +15,13 @@
 #define CLK_PIN 1
 #define DATA_PIN 2
 #define LOAD_PIN CS_PIN
-#define CLK_PULSE 0.1 // go at half speed to be sure. 
-#define LOAD_DELAY 0.05
 
-/* Register addresses. Only the last 4 bits actually matter;
-   They have been defined as 0000 here.  */ 
+#define CLK_PULSE 20
+#define DATA_DELAY 10
+#define HICLOCK_ADJUST 1
+
+// /* Register addresses. Only the last 4 bits actually matter;
+//    They have been defined as 0000 here.  */ 
 #define NOP_ADDR 0x00
 #define DECODE_MODE_ADDR 0x09
 #define INTENSITY_ADDR 0x0A
@@ -57,21 +65,22 @@
 #define NUMBERS DISPLAY_0, DISPLAY_1, DISPLAY_2, DISPLAY_3, DISPLAY_4, DISPLAY_5, DISPLAY_6, DISPLAY_7, DISPLAY_8, DISPLAY_9, BLANK, TEST
 #define DIGITS DIGIT_1, DIGIT_2, DIGIT_3, DIGIT_4, DIGIT_5, DIGIT_6, DIGIT_7, DIGIT_8
 
-// function prototypes: 
+// // function prototypes: 
 
-void maxSend16bits(uint8_t data);
+void maxSend16bits(uint16_t data);
 void maxSend8bits(uint8_t data, uint8_t address);
 void maxDisplayNumber(uint8_t number, uint8_t digit);
-void maxDisplayFigure(uint32_t figure);
+void maxDisplayFigure(uint8_t *numbers);
 void maxSetup();
 void maxShutdown(); 
 void maxUnShutdown(); 
 void maxSetDecodeMode(uint8_t mode);
 void maxEnterTestMode();
 void maxExitTestMode();
-void maxIntensity(uint8_t intensity);
+void maxSetIntensity(uint8_t intensity);
 
-// not really fit to be here 
+// // not really fit to be here 
 uint8_t numberOfDecimalDigits(uint32_t x);
 
 #endif
+
