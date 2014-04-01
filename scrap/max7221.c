@@ -11,11 +11,14 @@
 static const uint8_t numbers[12] = {NUMBERS};
 static const uint8_t digits[8] = {DIGITS};
 static uint8_t i;
+static uint8_t leading_zero_suppression = 1;
 
 /* Functions for sending data */
 void maxSend16bits(uint8_t data) {
     uint8_t i, bit;
     // MAX7221: put ~CS (chip select) pin low to load data
+    DDRB |= _BV(CLK_PIN) | _BV(DATA_PIN) | _BV(CS_PIN);
+
     PORTB &= ~_BV(CS_PIN); 
     PORTB &= ~_BV(CLK_PIN);
 
@@ -73,7 +76,7 @@ void maxSetup() {
     for (i = 0; i < 8; i++) {
         maxDisplayNumber(i, i);
     }
-    
+
     maxDisplayNumber(3, BLANK);
     maxDisplayNumber(4, TEST);
 
@@ -111,4 +114,34 @@ void maxExitTestMode() {
 
 void maxDisplayNumber(uint8_t number, uint8_t digit) {
     maxSend8bits(numbers[number], digits[digit-1]); 
+}
+
+void maxDisplayFigure(uint32_t figure) {
+    // prune figure to 0 ~ 9999 9999
+    uint8_t digits = numberOfDecimalDigits(figure);
+    figure = figure % 100000000;
+
+    if (leading_zero_suppression) {
+        for (i = 8; i > digits; i--) {
+            maxDisplayNumber(BLANK, i);
+        }
+        for (i = 0; i < digits; i++) {
+            maxDisplayNumber(figure % 10, i);
+            figure /= 10; 
+        }
+    } else {
+        for (i = 0; i < 8; i++) {
+            maxDisplayNumber(figure % 10, i);
+            figure /= 10; 
+        }
+    }
+
+
+}
+
+uint8_t numberOfDecimalDigits(uint32_t x) {
+    uint8_t n = 1;
+    for (i = 10, n = 1; i < 1000000000; i *= 10, n++) {
+        if (x < i) return n;
+    }
 }

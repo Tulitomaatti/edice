@@ -5,10 +5,10 @@
 #ifndef MAX7221_H
 #define MAX7221_H
 
+#define CS_PIN 0
+#define CLK_PIN 1
+#define DATA_PIN 2
 #define LOAD_PIN CS_PIN
-#define CS_PIN 3
-#define CLK_PIN 4
-#define DATA_PIN 5
 #define CLK_PULSE 0.1 // go at half speed to be sure. 
 #define LOAD_DELAY 0.05
 
@@ -62,6 +62,7 @@
 void maxSend16bits(uint8_t data);
 void maxSend8bits(uint8_t data, uint8_t address);
 void maxDisplayNumber(uint8_t number, uint8_t digit);
+void maxDisplayFigure(uint32_t figure);
 void maxSetup();
 void maxShutdown(); 
 void maxUnShutdown(); 
@@ -69,5 +70,8 @@ void maxSetDecodeMode(uint8_t mode);
 void maxEnterTestMode();
 void maxExitTestMode();
 void maxIntensity(uint8_t intensity);
+
+// not really fit to be here 
+uint8_t numberOfDecimalDigits(uint32_t x);
 
 #endif
