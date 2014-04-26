@@ -1,7 +1,7 @@
 PRG = maxtest
 OBJ = $(PRG).o
-# MCU_TARGET = atmega328p
-MCU_TARGET = attiny2313
+MCU_TARGET = atmega328
+# MCU_TARGET = attiny2313
 OPTIMIZE = -O2
 
 DEFS = -MMD -DUSB_VID=null -DUSB_PID=null -DARDUINO=105

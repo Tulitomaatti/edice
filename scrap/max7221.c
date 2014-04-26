@@ -1,47 +1,48 @@
 /* MAX7221 helper functions */
 
-#define __AVR_ATtiny2313__
-#define F_CPU 1000000UL
+// #define __AVR_ATtiny2313__
 
+#include "max7221.h"
 #include <inttypes.h> 
 #include <avr/io.h>
 #include <util/delay.h>
-#include "max7221.h"
+#include <math.h>
+#include <stdlib.h> 
 
 static const uint8_t numbers[12] = {NUMBERS};
 static const uint8_t digits[8] = {DIGITS};
-static uint8_t leading_zero_suppression = 0;
+static uint8_t leading_zero_suppression = 1;
 
 /* Functions for sending data */
 void maxSend16bits(uint16_t data) {
     uint8_t i;
 // clear clock and load bit
-    PORTB &= ~(_BV(CLK_PIN) | _BV(LOAD_PIN));
+    PORTC &= ~(_BV(CLK_PIN) | _BV(LOAD_PIN));
 
     // bit bang data in. 
     for (i = 0; i < 16; i++) {
         // MSB goes in first. 
         if ( (0x01 & (data >> (15-i))) ) {
-            PORTB |= _BV(DATA_PIN); 
+            PORTC |= _BV(DATA_PIN); 
         } else {
-            PORTB &= ~_BV(DATA_PIN);
+            PORTC &= ~_BV(DATA_PIN);
         }
 
         // seems to be stable even without this. 
         _delay_loop_1(DATA_DELAY);
 
         // Tick Tock
-        PORTB |= _BV(CLK_PIN);
+        PORTC |= _BV(CLK_PIN);
         _delay_loop_2(CLK_PULSE * HICLOCK_ADJUST); // makes clock look nicer on scope.
-        PORTB &= ~_BV(CLK_PIN);    
+        PORTC &= ~_BV(CLK_PIN);    
     }
 
     // set load bit to latch data. 
-    PORTB |= 0x01;
+    PORTC |= 0x01;
     
     // clear clock and data (not mandatory, maybe.)
     _delay_loop_1(CLK_PULSE); // might work without this one.
-    PORTB &= ~(_BV(DATA_PIN) | _BV(CLK_PIN));
+    PORTC &= ~(_BV(DATA_PIN) | _BV(CLK_PIN));
     _delay_loop_1(CLK_PULSE); // should work without this one.
 
 }
@@ -64,7 +65,7 @@ void maxSetup() {
         the intensity register will be set to its minimum value.*/
    
     // Just set everything high for now. 
-    PORTB = 0xFF;
+    PORTC = 0xFF;
 
     maxExitTestMode();
     maxSend8bits(0xFF, SCAN_LIMIT_ADDR);
@@ -107,35 +108,53 @@ void maxDisplayNumber(uint8_t number, uint8_t digit) {
     maxSend8bits(numbers[number], digits[digit-1]); 
 }
 
-void maxDisplayFigure(uint8_t numbers[8]) {
+void maxDisplayNumbers(uint8_t numbers[8]) {
     uint8_t i;
     for (i = 0; i < 8; i++) {
         maxDisplayNumber( numbers[i], digits[i]);
     }
-
-
-    // crashes on attiny2313? stack space? 
-    // prune figure to 0 ~ 9999 9999
-    // uint8_t digits = numberOfDecimalDigits(figure);
-    // figure = figure % 100000000;
-
-    // if (leading_zero_suppression) {
-    //     for (i = 8; i > digits; i--) {
-    //         maxDisplayNumber(BLANK, i);
-    //     }
-    //     for (i = 0; i < digits; i++) {
-    //         maxDisplayNumber(figure % 10, i);
-    //         figure /= 10; 
-    //     }
-    // } else {
-    //     for (i = 0; i < 8; i++) {
-    //         maxDisplayNumber(figure % 10, i);
-    //         figure /= 10; 
-    //     }
-    // }
-
-
 }
+
+int maxDisplayFigure(uint32_t figure, uint8_t *display, uint8_t start_digit, uint8_t len) {
+    uint8_t i;
+    uint32_t limit;
+
+    // sanity checks and trimming
+    if (start_digit + len > 9) {
+        return 1;
+    }
+
+    start_digit -= 1;
+
+    limit = 1;
+    for (i = 0; i < len; i++) {
+        limit *= 10;
+    }
+
+    figure = figure % limit;
+
+    // Insert the figure to the display var and update display
+    for (i = start_digit + len; i > start_digit; i--) {
+        
+        if (!figure) {  
+            if (leading_zero_suppression) {
+                display[i - 1] = BLANK_INDEX; 
+            } else {
+                display[i - 1] = figure;
+            }
+
+        } else {
+            display[i - 1] = figure % 10;
+            figure /= 10;                                                                         
+        }
+    }
+
+
+    maxDisplayNumbers(display);
+    return 0;
+}
+
+
 
 uint8_t numberOfDecimalDigits(uint32_t x) {
     uint8_t n, i;

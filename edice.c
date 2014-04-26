@@ -6,22 +6,19 @@
 
 /* 
 TODO: 
+-A better Makefile 
+-Bitbanging serial comms to MAX7129 should work...
+    -> See if SPI comms can be implemented easily. 
+-Revise timer use (for power saving)
+-Reimplement encoders with interrupts / power saving. 
 
-Button/switch state/debouncing helpers
+-See if everything works together. 
+    -> ADC + Encoders + MAX7219 
 
-Timer interrupts for 
-    * Polling button states (pure interrupts make debouncing hard I hear?)
-    * Going to power saving/sleep/off modes. 
+-PCB & housing 
 
-Display Control
-    * Display Logic
-    * Serial helpers (7-segment driver or SIPO registers?)
 
-*/ 
-
-/* ps. i have no idea about coding for hardware. 
-   ==> might be a better idea to make a software implementation first. */
-
+*/
 #define __AVR_ATmega328P__
 #define F_CPU 16000000UL /* 16MHz for atmega328p */
 

@@ -69,7 +69,7 @@ void pinSetup() {
     */
 
     /* Port B used for LED control */
-    DDRB = 0xFF;  // set port D to output (1)
+    DDRB = 0xFF;  // set port b to output (1)
     PORTB = 0x00; 
 
     /* Use port d for input, and enable internal pull-up
@@ -104,21 +104,6 @@ void USARTTransmit(uint8_t data) {
     UDR = data;
 }
 
-/*
-void updateLeds() {
-    PORTB = display; 
-    }
-
-Last 4 bits of the input number are considered. 
-void setDisplayHighBits(uint8_t x) {
-    display |= ((HIGH_BITS & x) << 4); 
-    updateLeds();
-}
-void setDisplayLowBits(uint8_t x) {
-    display |= (LOW_BITS & x); 
-    updateLeds();
-    }
-*/
 uint8_t readEncoderState() {
 
     // Notes for figuring out a 1-byte data structure for 8 boolean variables. 
@@ -137,8 +122,6 @@ uint8_t readEncoderState() {
     //  -- -- B2 A2 -- -- B1 A1
     // 
    
-   // uint8_t aux = PIND & 0x33;
-   // aux = PIND & 0x33;
 
     // encoder_state = ((encoder_state << 2) & 0xCC) | (PIND & 0x33); 
     encoder_state = ((encoder_state << 2) & 0xCC) | (PIND & 0x3C); 
@@ -148,18 +131,6 @@ uint8_t readEncoderState() {
     return encoder_state;
 }
 
-/*
-uint8_t checkModeButton() {
-    static uint16_t timeout = 1000; 
-    uint16_t timeout_start;
-    // 1100 0101
-    TCCR1B |= 0x05;
-    TCNT1 = 0; 
-    timeout_start = TCNT1;
-    
-
-}
-*/
 
 uint8_t decodeEncodersState(uint8_t state, uint8_t encoder_select) {
     /* let's look only at the last 4 bits. */
@@ -202,8 +173,6 @@ int main() {
 
     while (1) {
         _delay_us(100);
-        // setDisplayHighBits(readEncoderState() << 4);
-        // setDisplayLowBits(readEncoderState()); 
 
         enc0_counter += decodeEncodersState(readEncoderState(), 0);
         enc1_counter += decodeEncodersState(readEncoderState(), 1);
