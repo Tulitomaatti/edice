@@ -57,7 +57,6 @@ ab -> ab meaning
     
 
 void pinSetup() {
-
     // Timer1 (16bit) to 1024 prescale & enable. (XXXX X000 disables.)
     TCCR1B |= 0x01;
     rng_inited = 0;
@@ -79,8 +78,6 @@ void pinSetup() {
        */
     DDRD = 0x03;  // 0000 0011 
     PORTD |= 0xFC; // 1s enable internal pull-up resistor(s)
-
-
 }
 
 // from attiny data shset

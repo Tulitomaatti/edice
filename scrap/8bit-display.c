@@ -1,7 +1,7 @@
 /* 10 bit display for 10 bit numbers.  */ 
 
-#define F_CPU 16000000UL
-#define __AVR_ATmega328P__
+#define F_CPU 1000000UL
+#define __AVR_ATmega328__
 
 
 #include <avr/cpufunc.h>
