@@ -1,6 +1,7 @@
 // serial.c 
 
 #include "serial.h"
+#include "random.h"
 
 #include <avr/io.h>
 #include <avr/interrupt.h>

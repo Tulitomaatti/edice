@@ -73,6 +73,7 @@
 #define BLANK_INDEX 10
 #define TEST_INDEX 11
 
+#define NUMBER_OF_DIGITS 8
 
 // // function prototypes: 
 
@@ -89,7 +90,7 @@ void maxExitTestMode();
 void maxSetIntensity(uint8_t intensity);
 
 // // not really fit to be here 
-uint8_t numberOfDecimalDigits(uint32_t x);
+// uint8_t numberOfDecimalDigits(uint32_t x);
 
 #endif
 

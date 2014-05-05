@@ -10,7 +10,7 @@
 #include <stdlib.h> 
 
 static const uint8_t numbers[12] = {NUMBERS};
-static const uint8_t digits[8] = {DIGITS};
+static const uint8_t digits[NUMBER_OF_DIGITS] = {DIGITS};
 static uint8_t leading_zero_suppression = 1;
 
 /* Functions for sending data */
@@ -108,9 +108,9 @@ void maxDisplayNumber(uint8_t number, uint8_t digit) {
     maxSend8bits(numbers[number], digits[digit-1]); 
 }
 
-void maxDisplayNumbers(uint8_t numbers[8]) {
+void maxDisplayNumbers(uint8_t numbers[NUMBER_OF_DIGITS]) {
     uint8_t i;
-    for (i = 0; i < 8; i++) {
+    for (i = 0; i < NUMBER_OF_DIGITS; i++) {
         maxDisplayNumber( numbers[i], digits[i]);
     }
 }
@@ -120,7 +120,7 @@ int maxDisplayFigure(uint32_t figure, uint8_t *display, uint8_t start_digit, uin
     uint32_t limit;
 
     // sanity checks and trimming
-    if (start_digit + len > 9) {
+    if (start_digit + len > NUMBER_OF_DIGITS + 1) {
         return 1;
     }
 
@@ -156,9 +156,9 @@ int maxDisplayFigure(uint32_t figure, uint8_t *display, uint8_t start_digit, uin
 
 
 
-uint8_t numberOfDecimalDigits(uint32_t x) {
-    uint8_t n, i;
-    for (i = 10, n = 1; i < 1000000000; i *= 10, n++) {
-        if (x < i) return n;
-    }
-}
+// uint8_t numberOfDecimalDigits(uint32_t x) {
+//     uint8_t n, i;
+//     for (i = 10, n = 1; i < 1000000000; i *= 10, n++) {
+//         if (x < i) return n;
+//     }
+// }

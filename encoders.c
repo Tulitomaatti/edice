@@ -5,16 +5,25 @@
 #include <avr/io.h>
 
 
-
-#define __AVR_ATmega328__
-#define F_CPU 1000000UL
-
 volatile static uint8_t encoder_state; 
+volatile static struct {
+    uint8_t enc1_a : 2;
+    uint8_t enc1_b : 2;
+    uint8_t enc2_a : 2;
+    uint8_t enc2_b : 2;
+
+} encoder_state_new;
 
 static const uint8_t transition_table[16] = {0,  1, -1,  0,  
                                             -1,  0,  0,  1,
                                              1,  0,  0, -1,
                                              0, -1,  1,  0};
+
+uint8_t new_decode_encoder(uint8_t state) {
+    // state = 0000 preva prebv a b
+    return transition_table[state & 0x0f];
+}
+
 
 uint8_t readEncoderState() {
 

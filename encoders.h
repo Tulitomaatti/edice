@@ -20,4 +20,9 @@
 #define ENCODER_2B 3
 
 
+uint8_t readEncoderState();
+uint8_t decodeEncodersState(uint8_t state, uint8_t encoder_select);
+
+uint8_t new_decode_encoder(uint8_t state);
+
 #endif
