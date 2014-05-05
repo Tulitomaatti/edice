@@ -12,6 +12,7 @@
 static const uint8_t numbers[12] = {NUMBERS};
 static const uint8_t digits[NUMBER_OF_DIGITS] = {DIGITS};
 static uint8_t leading_zero_suppression = 1;
+static uint8_t display[8];
 
 /* Functions for sending data */
 void maxSend16bits(uint16_t data) {
@@ -110,18 +111,22 @@ void maxDisplayNumber(uint8_t number, uint8_t digit, uint8_t enable_dp) {
 }
 
 
-void maxDisplayNumbers(uint8_t numbers[NUMBER_OF_DIGITS], uint8_t enable_dp) {
+void maxDisplayNumbers(uint8_t numbers[NUMBER_OF_DIGITS]) {
     uint8_t i;
     for (i = 0; i < NUMBER_OF_DIGITS; i++) {
         // hax, we never need a dp elsewhere than at i==5. 
-        if (enable_dp && i == 5) maxDisplayNumber(numbers[i], digits[i], 1);
+        if (numbers[i] >= 100) {
+            numbers[i] &= ~_BV(7);
+            maxDisplayNumber(numbers[i], digits[i], 1);
+            numbers[i] |= _BV(7);
+        }
         else maxDisplayNumber(numbers[i], digits[i], 0);
     }
 }
 
 
 
-int maxDisplayFigure(uint32_t figure, volatile uint8_t *display, uint8_t start_digit, uint8_t len, uint8_t enable_dp) {
+int maxDisplayFigure(uint32_t figure, uint8_t start_digit, uint8_t len, uint8_t enable_dp) {
     uint8_t i;
     uint32_t limit;
 
@@ -141,22 +146,23 @@ int maxDisplayFigure(uint32_t figure, volatile uint8_t *display, uint8_t start_d
 
     // Insert the figure to the display var and update display
     for (i = start_digit + len; i > start_digit; i--) {
-        if (i == start_digit + len) {
-        }
         if (!figure) {  
             if (leading_zero_suppression) {
                 display[i - 1] = BLANK_INDEX; 
+                if (i == start_digit + len && enable_dp) display[i - 1] |= _BV(7); // hax: add dp for last number v. 
             } else {
                 display[i - 1] = figure;
             }
 
         } else {
-            display[i - 1] = figure % 10;
+            display[i - 1] = figure % 10; 
+            if (i == start_digit + len && enable_dp) display[i - 1] |= _BV(7); // hax: add dp for last number v. 
+
             figure /= 10;                                                                         
         }
     }
 
-    maxDisplayNumbers(display, enable_dp);
+    maxDisplayNumbers(display);
 
     return 0;
 }

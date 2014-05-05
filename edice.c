@@ -28,7 +28,6 @@ uint16_t results_sum = 0;
 
 volatile uint8_t results_scroller_counter = 1;
 
-volatile uint8_t display[8] = {0};
 
 volatile struct {
     uint8_t activity : 1;
@@ -86,7 +85,7 @@ int main(void) {
 
 
 void check_inputs() {
-    TCCR2B &= ~(_BV(CS20) | _BV(CS21) | _BV(CS22));
+    TCCR2B &= ~(_BV(CS20) | _BV(CS21) | _BV(CS22)); //disable input polling timer.
     uint8_t input_port = PIND;
 
     static uint8_t encoder1_state;
@@ -156,11 +155,11 @@ void update_displays() {
 
 
     if (number_of_dice != last_n_dice) {
-        maxDisplayFigure(number_of_dice, display, N_OF_DICE_START_DIGIT, 2, status.display_mode); 
+        maxDisplayFigure(number_of_dice, N_OF_DICE_START_DIGIT, 2, 0); 
         last_n_dice = number_of_dice;
     }
     if (die_size != last_die_size) {
-        maxDisplayFigure(die_size, display, DIE_SIZE_START_DIGIT, 2, status.display_mode);
+        maxDisplayFigure(die_size, DIE_SIZE_START_DIGIT, 2, 0);
         last_die_size = die_size;
     }
 
@@ -205,26 +204,27 @@ void update_results() {
     if (status.display_mode) {
         // TODO: scroller
         if (results_len == 1) {
-            maxDisplayFigure(0, display, 5, 2, status.display_mode);
-            maxDisplayFigure(results[0], display, 7, 2, status.display_mode);
+            maxDisplayFigure(0, 5, 2, status.display_mode);
+            maxDisplayFigure(results[0], 7, 2, 0);
             results_len = 1;
         } else if (results_len == 2) {
-            maxDisplayFigure(results[0], display, 7, 2, status.display_mode);
-            maxDisplayFigure(results[1], display, 5, 2, status.display_mode);
+            maxDisplayFigure(results[0], 7, 2, status.display_mode);
+            maxDisplayFigure(results[1], 5, 2, status.display_mode);
 
         // 3 or more dice: 
         } else {
             if (results_scroller_counter < 10) {
-                maxDisplayFigure(results_scroller_counter, display, 5, 1, status.display_mode);
-                maxDisplayFigure(0, display, 6, 1, status.display_mode);
+                maxDisplayFigure(results_scroller_counter, 5, 1, status.display_mode);
+                maxDisplayFigure(0, 6, 1, 0);
+                maxDisplayFigure(results[results_scroller_counter - 1], RESULTS_START_DIGIT + 2, 2, 0);
             } else {
-                maxDisplayFigure(results_scroller_counter, display, 5, 2, status.display_mode);
-                maxDisplayFigure(results[results_scroller_counter - 1], display, RESULTS_START_DIGIT + 2, 2, status.display_mode);
+                maxDisplayFigure(results_scroller_counter, 5, 2, status.display_mode);
+                maxDisplayFigure(results[results_scroller_counter - 1], RESULTS_START_DIGIT + 2, 2, 0);
             }
         }
 
     } else {
-        maxDisplayFigure(results_sum, display, RESULTS_START_DIGIT, 4, 0);
+        maxDisplayFigure(results_sum, RESULTS_START_DIGIT, 4, 0);
     }
 }
 
@@ -275,7 +275,7 @@ void display_setup(uint8_t brightness) {
     maxSend8bits(0xFF, SCAN_LIMIT_ADDR);
     maxSetDecodeMode(0);
     maxSetIntensity(brightness);
-    maxDisplayNumbers(numbers, 1);
+    maxDisplayNumbers(numbers);
     maxUnShutdown();
 }
 

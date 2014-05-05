@@ -80,8 +80,8 @@
 void maxSend16bits(uint16_t data);
 void maxSend8bits(uint8_t data, uint8_t address);
 void maxDisplayNumber(uint8_t number, uint8_t digit, uint8_t enable_dp);
-void maxDisplayNumbers(uint8_t numbers[NUMBER_OF_DIGITS], uint8_t enable_dp);
-int maxDisplayFigure(uint32_t figure, volatile uint8_t *display, uint8_t start_digit, uint8_t len, uint8_t enable_dp);
+void maxDisplayNumbers(uint8_t numbers[NUMBER_OF_DIGITS]);
+int maxDisplayFigure(uint32_t figure, uint8_t start_digit, uint8_t len, uint8_t enable_dp);
 void maxShutdown(); 
 void maxAddDP(uint8_t digit, volatile uint8_t *display);
 void maxUnShutdown(); 
