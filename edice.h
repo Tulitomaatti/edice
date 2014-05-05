@@ -28,13 +28,15 @@
 
 
 void display_update_timer_setup();
-
+void update_results();
 void cool_visual_effects(uint8_t count);
 
 void preinit_RNG();
 void finalize_RNG_init();
 void reinit_RNG();
+void results_scroller_timer_setup();
 
+uint8_t results_changed();
 void update_displays();
 
 void init();

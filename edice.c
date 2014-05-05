@@ -18,16 +18,17 @@
 /* Global variables */
 volatile uint8_t enc1_count = 2;
 volatile uint8_t enc2_count = 12; 
-uint8_t encoder1_state = 0; 
-uint8_t encoder2_state = 0;
 
-uint8_t die_size = 6;
-uint8_t number_of_dice = 1;
+volatile uint8_t die_size = 6;
+volatile uint8_t number_of_dice = 1;
 
 uint8_t results[100] = {0};
+uint8_t results_len = 1;
 uint16_t results_sum = 0;
 
-uint8_t display[8] = {0};
+volatile uint8_t results_scroller_counter = 1;
+
+volatile uint8_t display[8] = {0};
 
 volatile struct {
     uint8_t activity : 1;
@@ -54,14 +55,13 @@ int main(void) {
         cli();
 
         // Update status from inputs
-        number_of_dice = ((enc1_count >> ENC_COUNTER_TUNE_FACTOR) % MAX_THROWS) + 1; //>> ENC_COUNTER_TUNE_FACTOR;
-        die_size = ((enc2_count >> ENC_COUNTER_TUNE_FACTOR) % MAX_DIE_SIZE) + 1; //>> ENC_COUNTER_TUNE_FACTOR;
-        if (die_size == 1) die_size = 2;
+
         
         // Throw dice, store results, calculate sum. 
         if (status.roll_button_pressed) {            
             results_sum = 0;
-            for (i = 0; i < number_of_dice; i++) {
+            results_len = number_of_dice;
+            for (i = 0; i < results_len; i++) {
                 results_sum += results[i] = (rand() % die_size) + 1; // TODO: Fix: % die_size will slant the distribution. 
             }
         }
@@ -90,9 +90,12 @@ void check_inputs() {
     uint8_t input_port = PIND;
 
     static uint8_t encoder1_state;
-
+    static uint8_t encoder2_state;
     // button
     status.roll_button_pressed = ~(input_port >> 7);
+
+    // display mode & scroller value
+    status.display_mode = (input_port >> 6) & 1;
 
     // encoder 1
     encoder1_state <<= 2; 
@@ -102,17 +105,32 @@ void check_inputs() {
     if (enc1_count > 198) enc1_count = 1;
     else if (enc1_count < 1) enc1_count = 198;
 
+    // Change ndice accordingly. 
+    number_of_dice = ((enc1_count >> ENC_COUNTER_TUNE_FACTOR) % MAX_THROWS) + 1;
+    if (!status.display_mode) { 
+        die_size = ((enc2_count >> ENC_COUNTER_TUNE_FACTOR) % MAX_DIE_SIZE) + 1; 
+        if (die_size == 1) die_size = 2;
+    }
 
-    // encoder 2
+
+    // encoder 2 
     encoder2_state <<= 2; 
     encoder2_state |= (((input_port >> 3) & 0x02) | ((input_port >> 5) & 0x01) ) & 0x0f;
-        
-    enc2_count += new_decode_encoder(encoder2_state);
-    if (enc2_count > 198) enc2_count = 1;
-    else if (enc2_count < 1) enc2_count = 198;
 
-    // display mode
-    status.display_mode = (input_port >> 6) & 1;
+    // -> die size or scroller: 
+    if (status.display_mode) {
+        results_scroller_counter += new_decode_encoder(encoder2_state);
+
+        if (results_scroller_counter > results_len) results_scroller_counter = 1;
+        else if (results_scroller_counter == 0) results_scroller_counter = results_len;
+
+    } else {
+        enc2_count += new_decode_encoder(encoder2_state);
+
+        if (enc2_count > 198) enc2_count = 1;
+        else if (enc2_count < 1) enc2_count = 198;
+    }
+
     polling_timer_setup();
 }
 
@@ -126,6 +144,7 @@ ISR(TIMER0_COMPA_vect) {
     update_displays();
 }
 
+
 ISR(TIMER2_OVF_vect) { 
     check_inputs();
 }
@@ -134,35 +153,78 @@ void update_displays() {
     // remember last display state to avoid futile updating. 
     static uint8_t last_n_dice;
     static uint8_t last_die_size; 
-    static uint8_t last_results_0; 
-    static uint8_t last_display_mode;
+
 
     if (number_of_dice != last_n_dice) {
-        maxDisplayFigure(number_of_dice, display, N_OF_DICE_START_DIGIT, 2); 
+        maxDisplayFigure(number_of_dice, display, N_OF_DICE_START_DIGIT, 2, status.display_mode); 
         last_n_dice = number_of_dice;
     }
     if (die_size != last_die_size) {
-        maxDisplayFigure(die_size, display, DIE_SIZE_START_DIGIT, 2);
+        maxDisplayFigure(die_size, display, DIE_SIZE_START_DIGIT, 2, status.display_mode);
         last_die_size = die_size;
     }
 
-    if (last_results_0 != results[0]) {
-        if (status.display_mode) {
-            // TODO: scroller
-            maxDisplayFigure(results[0], display, RESULTS_START_DIGIT, 4);
-        } else {
-            maxDisplayFigure(results_sum, display, RESULTS_START_DIGIT, 4);
-        }
-        last_results_0 = results[0];
+    if (results_changed()) update_results();
 
-    } else if (status.display_mode != last_display_mode) {
-        if (status.display_mode) {
-            // TODO: scroller
-            maxDisplayFigure(results[0], display, RESULTS_START_DIGIT, 4);
-        } else {
-            maxDisplayFigure(results_sum, display, RESULTS_START_DIGIT, 4);
-        }
+    // if (last_results_sum != results_sum) {
+    //     update_results();
+    //     last_results_sum = results_sum;
+
+    // } else if (status.display_mode != last_display_mode) {
+    //     update_results();
+    //     last_display_mode = status.display_mode;
+    // } else if (results_scroller_counter != last_scroller_value) {
+    //     update_results();
+    //     last_scroller_value = results_scroller_counter;
+    // }
+
+}
+
+uint8_t results_changed() {
+    static uint8_t last_results_sum; 
+    static uint8_t last_display_mode;
+    static uint8_t last_scroller_value;
+
+    if (last_results_sum != results_sum) {
+        last_results_sum = results_sum;
+        return 1;
+    } else if (last_display_mode != status.display_mode) {
         last_display_mode = status.display_mode;
+        return 1;
+    } else if (last_scroller_value != results_scroller_counter) {
+        last_scroller_value = results_scroller_counter;
+        return 1;
+    }
+
+
+    return 0;
+}
+
+void update_results() {
+ 
+    if (status.display_mode) {
+        // TODO: scroller
+        if (results_len == 1) {
+            maxDisplayFigure(0, display, 5, 2, status.display_mode);
+            maxDisplayFigure(results[0], display, 7, 2, status.display_mode);
+            results_len = 1;
+        } else if (results_len == 2) {
+            maxDisplayFigure(results[0], display, 7, 2, status.display_mode);
+            maxDisplayFigure(results[1], display, 5, 2, status.display_mode);
+
+        // 3 or more dice: 
+        } else {
+            if (results_scroller_counter < 10) {
+                maxDisplayFigure(results_scroller_counter, display, 5, 1, status.display_mode);
+                maxDisplayFigure(0, display, 6, 1, status.display_mode);
+            } else {
+                maxDisplayFigure(results_scroller_counter, display, 5, 2, status.display_mode);
+                maxDisplayFigure(results[results_scroller_counter - 1], display, RESULTS_START_DIGIT + 2, 2, status.display_mode);
+            }
+        }
+
+    } else {
+        maxDisplayFigure(results_sum, display, RESULTS_START_DIGIT, 4, 0);
     }
 }
 
@@ -177,12 +239,6 @@ void init() {
 
     display_update_timer_setup();
     polling_timer_setup();
-
-
-
-
-    
-
 
     // enable interrupts
     sei();
@@ -219,7 +275,7 @@ void display_setup(uint8_t brightness) {
     maxSend8bits(0xFF, SCAN_LIMIT_ADDR);
     maxSetDecodeMode(0);
     maxSetIntensity(brightness);
-    maxDisplayNumbers(numbers);
+    maxDisplayNumbers(numbers, 1);
     maxUnShutdown();
 }
 
@@ -237,14 +293,19 @@ void preinit_RNG() {
 
 void display_update_timer_setup() {
     // TCCR0A = 0x00; // normal operation.
-    //TCCR0B = 0x05; // set clock prescaler to 1024
-    TCCR0B |= 0x05; // | _BV(CS00);
+    // TCCR0B = 0x05; // set clock prescaler to 1024
+    // TCCR0B |= 0x05; // | _BV(CS00);
+    TCCR0B |= _BV(CS02) | _BV(CS00);
     // TCNT0 = the timer value register
 
     OCR0A = 0x80; 
 
     //TIMSK0 = 0x01; // enable overflow interrupt for timer 0
     TIMSK0 |=  _BV(OCIE0A) | _BV(TOIE0);
+}
+
+void results_scroller_timer_setup() {
+    TIMSK0 |= _BV(OCIE0B);
 }
 
 void cool_visual_effects(uint8_t count) {
@@ -261,6 +322,8 @@ void polling_timer_setup() {
     TCCR2B |= _BV(CS21);
     TIMSK2 |= _BV(TOIE2);
 }
+
+
 
 void finalize_RNG_init() {
 

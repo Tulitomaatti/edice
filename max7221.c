@@ -104,18 +104,24 @@ void maxExitTestMode() {
 
 };
 
-void maxDisplayNumber(uint8_t number, uint8_t digit) {
-    maxSend8bits(numbers[number], digits[digit-1]); 
+void maxDisplayNumber(uint8_t number, uint8_t digit, uint8_t enable_dp) {
+    if (!enable_dp) maxSend8bits(numbers[number], digits[digit-1]); 
+    else maxSend8bits(numbers[number] | _BV(SEGDP), digits[digit-1]);
 }
 
-void maxDisplayNumbers(uint8_t numbers[NUMBER_OF_DIGITS]) {
+
+void maxDisplayNumbers(uint8_t numbers[NUMBER_OF_DIGITS], uint8_t enable_dp) {
     uint8_t i;
     for (i = 0; i < NUMBER_OF_DIGITS; i++) {
-        maxDisplayNumber( numbers[i], digits[i]);
+        // hax, we never need a dp elsewhere than at i==5. 
+        if (enable_dp && i == 5) maxDisplayNumber(numbers[i], digits[i], 1);
+        else maxDisplayNumber(numbers[i], digits[i], 0);
     }
 }
 
-int maxDisplayFigure(uint32_t figure, uint8_t *display, uint8_t start_digit, uint8_t len) {
+
+
+int maxDisplayFigure(uint32_t figure, volatile uint8_t *display, uint8_t start_digit, uint8_t len, uint8_t enable_dp) {
     uint8_t i;
     uint32_t limit;
 
@@ -135,7 +141,8 @@ int maxDisplayFigure(uint32_t figure, uint8_t *display, uint8_t start_digit, uin
 
     // Insert the figure to the display var and update display
     for (i = start_digit + len; i > start_digit; i--) {
-        
+        if (i == start_digit + len) {
+        }
         if (!figure) {  
             if (leading_zero_suppression) {
                 display[i - 1] = BLANK_INDEX; 
@@ -149,13 +156,15 @@ int maxDisplayFigure(uint32_t figure, uint8_t *display, uint8_t start_digit, uin
         }
     }
 
+    maxDisplayNumbers(display, enable_dp);
 
-    maxDisplayNumbers(display);
     return 0;
 }
 
 
-
+void maxAddDP(uint8_t digit, volatile uint8_t *display) {
+    maxSend8bits(display[digit-1] | _BV(SEGDP), digits[digit - 1]);
+}
 // uint8_t numberOfDecimalDigits(uint32_t x) {
 //     uint8_t n, i;
 //     for (i = 10, n = 1; i < 1000000000; i *= 10, n++) {
