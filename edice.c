@@ -68,6 +68,7 @@ int main(void) {
                 results_sum = 0;
                 results_len = number_of_dice;
                 for (i = 0; i < results_len; i++) {
+                    //TODO: make and/or replace rand() here with tinymt32 based function. 
                     results_sum += results[i] = (rand() % die_size) + 1; // TODO: Fix: % die_size will slant the distribution. 
                 }
             }
@@ -85,20 +86,20 @@ int main(void) {
 
 
 void check_inputs() {
-    TCCR2B &= ~(_BV(CS20) | _BV(CS21) | _BV(CS22)); //disable input polling timer.
+    TCCR2B &= ~(_BV(CS20) | _BV(CS21) | _BV(CS22)); //disable input polling timer, just to be sure.
     uint8_t input_port = PIND;
 
     static uint8_t encoder1_state;
     static uint8_t encoder2_state;
     // button
-    status.roll_button_pressed = ~(input_port >> 7);
+    status.roll_button_pressed = ~(input_port >> PIND7);
 
     // display mode & scroller value
-    status.display_mode = (input_port >> 6) & 1;
+    status.display_mode = (input_port >> PIND6) & 1;
 
     // encoder 1
     encoder1_state <<= 2; 
-    encoder1_state |= (((input_port >> 1) & 0x02) | ((input_port >> 3) & 0x01) ) & 0x0f;
+    encoder1_state |= (((input_port >> (PIND2 - 1) ) & 0x02) | ((input_port >> PIND3) & 0x01) ) & 0x0f;
         
     enc1_count += new_decode_encoder(encoder1_state);
     if (enc1_count > 198) enc1_count = 1;
@@ -108,13 +109,13 @@ void check_inputs() {
     number_of_dice = ((enc1_count >> ENC_COUNTER_TUNE_FACTOR) % MAX_THROWS) + 1;
     if (!status.display_mode) { 
         die_size = ((enc2_count >> ENC_COUNTER_TUNE_FACTOR) % MAX_DIE_SIZE) + 1; 
-        if (die_size == 1) die_size = 2;
+        if (die_size < MIN_DIE_SIZE) die_size = MIN_DIE_SIZE;
     }
 
 
     // encoder 2 
     encoder2_state <<= 2; 
-    encoder2_state |= (((input_port >> 3) & 0x02) | ((input_port >> 5) & 0x01) ) & 0x0f;
+    encoder2_state |= (((input_port >> (PIND4 - 1)) & 0x02) | ((input_port >> PIND5) & 0x01) ) & 0x0f;
 
     // -> die size or scroller: 
     if (status.display_mode) {
@@ -202,7 +203,7 @@ uint8_t results_changed() {
 void update_results() {
  
     if (status.display_mode) {
-        // TODO: scroller
+        // TODO: un-disable die size control when only 1 dice is thrown
         if (results_len == 1) {
             maxDisplayFigure(0, 5, 2, status.display_mode);
             maxDisplayFigure(results[0], 7, 2, 0);
@@ -278,6 +279,7 @@ void display_setup(uint8_t brightness) {
 
 void adc_setup() {
     // Enable adc, set prescaler, etc. on all free pins. 
+    // TODO
 }
 
 void serial_comm_setup() {
@@ -306,12 +308,14 @@ void rng_seeding_timer_setup() {
     //TODO: Enable 16bit timer, make a function to get cycles.
 }
 
+
+// this might not be used anywhere? I can't remember why I wrote this function:
 void results_scroller_timer_setup() {
     TIMSK0 |= _BV(OCIE0B);
 }
 
 
-//not used for now.
+//not used for now. blinks. 
 void cool_visual_effects(uint8_t count) {
     uint8_t i;
     for (i = 0; i < count; i++) {
