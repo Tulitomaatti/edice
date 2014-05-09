@@ -9,28 +9,24 @@
 
 
 
-// from some forum: 
-void USARTInit(uint16_t ubrr_value, uint8_t x2, uint8_t stopbits) {
-    UBRRL = ubrr_value & 0xFF;
-    UBRRH = ubrr_value >> 8; 
+// from data sheet:
+void USART_Init( uint16_t ubrr) {
+    /*Set baud rate */
+    UBRR0H = (unsigned char)(ubrr>>8);
+    UBRR0L = (unsigned char)ubrr;
 
-    // 8 data bits, no parity, asynch.  1 or 2 stop bits. 
-    UCSRC = _BV(UCSZ1) | _BV(UCSZ0);
-    if (stopbits == 2) UCSRC |= _BV(USBS);
+    /*Enable receiver and transmitter */
+    UCSR0B = (1<<RXEN0)|(1<<TXEN0);
 
-    if (x2) UCSRA = _BV(U2X); //2x
-
-    // usart data registre epty interrupt enable 
-    UCSRB = _BV(UDRIE);
-
-    UCSRB |= _BV(RXEN) | _BV(TXEN);
+    /* Set frame format: 8data, 2stop bit */
+    UCSR0C = (1<<USBS0)|(3<<UCSZ00);
 }
 
-void USARTTransmit(uint8_t data) {
-    // wait for transmit buffer to free up
-    while (! (UCSRA & (1 << UDRE)));
-    PORTB = 0x00;
+void USART_Transmit( unsigned char data ) {
+    /* Wait for empty transmit buffer */
+    while (!( UCSR0A & (1 << UDRE0) ));
+    // while ( !( UCSRnA & (1<<UDRE0)) );
 
-    // put data in the buffer. this sends the data.
-    UDR = data;
+    /* Put data into buffer, sends the data */
+    UDR0 = data;
 }

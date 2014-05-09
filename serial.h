@@ -3,13 +3,23 @@
 
 #include <stdint.h>
 
-#define BAUDS 9600
+#ifndef SERIAL_H
+#define SERIAL_H
+
+#define BAUDS 38400
 
 #ifndef __AVR_ATmega328__
 #define __AVR_ATmega328__
-#define F_CPU 1000000UL
+#define F_CPU 8000000UL
 #endif
 
 
-void USARTInit(uint16_t ubrr_value, uint8_t x2, uint8_t stopbits);
-void USARTTransmit(uint8_t data);
+
+#define FOSC F_CPU // Clock Speed
+#define BAUD BAUDS
+#define MYUBRR FOSC/16/BAUD-1
+
+void USART_Init(uint16_t ubrr_value);
+void USART_Transmit(uint8_t data);
+
+#endif

@@ -11,7 +11,8 @@
 
 #include "max7221.h"
 #include "encoders.h"
-//  #include "serial.h"
+#include "serial.h"
+#include "random.h"
 // #include random.h // Custom RNG; use stdlib for testing. 
 
 
@@ -42,43 +43,43 @@ volatile struct {
 
 int main(void) {
     uint8_t i; 
+  //  uint32_t random_bits;
     
     init();
+
 
     if (!status.rng_ok) {
         finalize_RNG_init();
     }
 
+
     // looping logic: 
     while (1) {
         cli();
 
-        // Update status from inputs
+        if (RANDOMNESS_TESTING_MODE) {
+            USART_Transmit(random_32int());
 
+            //USART_Transmit(0x55);
+            continue;
+        } else {
         
         // Throw dice, store results, calculate sum. 
-        if (status.roll_button_pressed) {            
-            results_sum = 0;
-            results_len = number_of_dice;
-            for (i = 0; i < results_len; i++) {
-                results_sum += results[i] = (rand() % die_size) + 1; // TODO: Fix: % die_size will slant the distribution. 
+            if (status.roll_button_pressed) {            
+                results_sum = 0;
+                results_len = number_of_dice;
+                for (i = 0; i < results_len; i++) {
+                    results_sum += results[i] = (rand() % die_size) + 1; // TODO: Fix: % die_size will slant the distribution. 
+                }
             }
         }
-       // _delay_ms(10);
-        
-        
 
         sei();
+        _delay_ms(5);
 
-        _delay_ms(10);
-        
-        //_delay_ms(1000);
     }
-    
 
     // TODO: Go to power saving mode, wait for an timer interrupt.
-
-
     return 0;
 }
 
@@ -231,11 +232,37 @@ void update_results() {
 void init() {
     pin_setup();
     check_inputs();
-    // serial_comm_setup();
+    serial_comm_setup();
+
+    // USART_Transmit(0x00);
+
+    // USART_Transmit(0x01);
+    // USART_Transmit(0x02);
+    // USART_Transmit(0x03);
+    // USART_Transmit(0x04);
+    // USART_Transmit(0x05);
+    // USART_Transmit(0x06);
+    // USART_Transmit(0x07);
+    
     // adc_setup();
-    display_setup(6);
+    display_setup(10);
+
+
+    // USART_Transmit(0x08);
+    // USART_Transmit(0x09);
+    // USART_Transmit(0x10);
+    // USART_Transmit(0x11);
+    // USART_Transmit(0x12);
+    // USART_Transmit(0x13);
+    // USART_Transmit(0x14);
 
     preinit_RNG();
+
+    // USART_Transmit(0x00);
+    // USART_Transmit(0x00);
+    // USART_Transmit(0x00);
+    // USART_Transmit(0x00);
+    // USART_Transmit(0x00);
 
     display_update_timer_setup();
     polling_timer_setup();
@@ -284,11 +311,26 @@ void adc_setup() {
 }
 
 void serial_comm_setup() {
+    //uint8_t i = 0;
+    //char stringi[] = "Succesful USARTinit.";
+    USART_Init(MYUBRR);
     // See data sheet. 
+
+
+    // for (i = 0; i < 21; i++) {
+    //     USART_Transmit(stringi[i]);
+    // }
 }
 
 void preinit_RNG() {
-    srand(384729); 
+
+    USART_Transmit(0xCC);
+
+
+    USART_Transmit(0xDD);
+    init_tinymt(9837543);
+
+    USART_Transmit(0xEE);
 }
 
 void display_update_timer_setup() {

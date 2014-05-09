@@ -5,7 +5,7 @@
 
 #ifndef __AVR_ATmega328__
 #define __AVR_ATmega328__
-#define F_CPU 1000000UL // max 16MHz for atmega328p, default 1Mhz 
+#define F_CPU 8000000UL // max 16MHz for atmega328p, default 1Mhz 
 #endif 
 
 #define BAD_SEED 0
@@ -22,6 +22,8 @@
 #define MIN_DIE_SIZE 2 
 #define MAX_THROWS 99 
 #define MIN_THROWS 1
+
+#define RANDOMNESS_TESTING_MODE 0
 
 
 #include <stdint.h> 
