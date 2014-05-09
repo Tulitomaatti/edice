@@ -13,7 +13,6 @@
 #include "encoders.h"
 #include "serial.h"
 #include "random.h"
-// #include random.h // Custom RNG; use stdlib for testing. 
 
 
 /* Global variables */
@@ -135,7 +134,7 @@ void check_inputs() {
 }
 
 
-//update displays on every overflow:
+//update displays on every overflow (and halfway up)
 ISR(TIMER0_OVF_vect) {
     update_displays();
 }
@@ -234,45 +233,20 @@ void init() {
     check_inputs();
     serial_comm_setup();
 
-    // USART_Transmit(0x00);
-
-    // USART_Transmit(0x01);
-    // USART_Transmit(0x02);
-    // USART_Transmit(0x03);
-    // USART_Transmit(0x04);
-    // USART_Transmit(0x05);
-    // USART_Transmit(0x06);
-    // USART_Transmit(0x07);
     
     // adc_setup();
     display_setup(10);
 
 
-    // USART_Transmit(0x08);
-    // USART_Transmit(0x09);
-    // USART_Transmit(0x10);
-    // USART_Transmit(0x11);
-    // USART_Transmit(0x12);
-    // USART_Transmit(0x13);
-    // USART_Transmit(0x14);
-
     preinit_RNG();
 
-    // USART_Transmit(0x00);
-    // USART_Transmit(0x00);
-    // USART_Transmit(0x00);
-    // USART_Transmit(0x00);
-    // USART_Transmit(0x00);
 
     display_update_timer_setup();
     polling_timer_setup();
 
     // enable interrupts
     sei();
-
 }
-
-// TIMER0_OVF_vect
 
 
 void pin_setup() {
@@ -280,23 +254,19 @@ void pin_setup() {
     /* Buttons, switches, encs on PORTD from pins 2~7. */
 
     DDRD &= 0x03; // 0000 0011 (rx & tx on pins 0 & 1 unchanged)
-
     PORTD |= 0xFC; // 1111 1100 enable internal pull-up resistors -- "" --
 
-    // buttons
-
+    // Set port C to output for bitbang communications to max7129
     DDRC |= 0xFF;
 
-    // encoders
-    // bitbang-comm pins: check port & set data/clk/cs pins. 
-
-    /* Set internal pull-up resistors for buttons & encoders */
 
     /* Do anything needed for adc/serial comms?*/
+    // TODO: enable some ADC pins & adc conversion
+    // pins: here, adc: in adc init function.
 } 
 
 void display_setup(uint8_t brightness) {
-    uint8_t numbers[8] = {1, 8, 2, 8, 3, 8, 4, 8};
+    uint8_t numbers[8] = {1, 8, 2, 8, 3, 8, 4, 8}; // some random numbers for testing. 
 
     maxExitTestMode();
     maxSend8bits(0xFF, SCAN_LIMIT_ADDR);
@@ -311,45 +281,37 @@ void adc_setup() {
 }
 
 void serial_comm_setup() {
-    //uint8_t i = 0;
-    //char stringi[] = "Succesful USARTinit.";
     USART_Init(MYUBRR);
-    // See data sheet. 
-
-
-    // for (i = 0; i < 21; i++) {
-    //     USART_Transmit(stringi[i]);
-    // }
+    // See data sheet and serial.h. 
 }
 
 void preinit_RNG() {
+    // TODO: use a seed sampled from analogue noise.
+    init_tinymt(9837543); 
 
-    USART_Transmit(0xCC);
-
-
-    USART_Transmit(0xDD);
-    init_tinymt(9837543);
-
-    USART_Transmit(0xEE);
 }
 
 void display_update_timer_setup() {
-    // TCCR0A = 0x00; // normal operation.
-    // TCCR0B = 0x05; // set clock prescaler to 1024
-    // TCCR0B |= 0x05; // | _BV(CS00);
-    TCCR0B |= _BV(CS02) | _BV(CS00);
-    // TCNT0 = the timer value register
+    // Set timer 0 prescaler to 1024 (max) 
+    TCCR0B |= _BV(CS02) | _BV(CS00);        // TCNT0 = the timer value register
 
+    // Timer 0A compare at midway to 0xFF. 
     OCR0A = 0x80; 
 
-    //TIMSK0 = 0x01; // enable overflow interrupt for timer 0
+    // enable overflow and compare a interrupt for timer 0
     TIMSK0 |=  _BV(OCIE0A) | _BV(TOIE0);
+}
+
+void rng_seeding_timer_setup() {
+    //TODO: Enable 16bit timer, make a function to get cycles.
 }
 
 void results_scroller_timer_setup() {
     TIMSK0 |= _BV(OCIE0B);
 }
 
+
+//not used for now.
 void cool_visual_effects(uint8_t count) {
     uint8_t i;
     for (i = 0; i < count; i++) {
@@ -361,6 +323,7 @@ void cool_visual_effects(uint8_t count) {
 }
 
 void polling_timer_setup() {
+    // Set prescaler and enable timer 2 overflow interrupt.
     TCCR2B |= _BV(CS21);
     TIMSK2 |= _BV(TOIE2);
 }
@@ -368,6 +331,6 @@ void polling_timer_setup() {
 
 
 void finalize_RNG_init() {
-
+    // TODO: read 16 bit timer and more adc. 
     status.rng_ok = 1;
 }
