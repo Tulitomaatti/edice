@@ -1,6 +1,8 @@
 # Object files
 *.o
 *.ko
+*/*.o
+*.d 
 
 # Libraries
 *.lib
@@ -16,6 +18,7 @@
 *.exe
 *.out
 *.app
+*.elf
 
 # 
 *.sublime* 
