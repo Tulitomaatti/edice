@@ -32,7 +32,7 @@ uint8_t init_tinymt(uint32_t seed) {
 }
 
 
-// magic:
+// magic parameters from parameter generator:
 // e63abbe7d7fec47363530af48c53ba81,32,1702128737,
 // 73aa6214,
 // bfccb6af,

@@ -1,6 +1,5 @@
 /* MAX7221 helper functions */
 
-// #define __AVR_ATtiny2313__
 
 #include "max7221.h"
 #include <inttypes.h> 
@@ -16,8 +15,14 @@ static uint8_t display[8];
 
 /* Functions for sending data */
 void maxSend16bits(uint16_t data) {
+    // TODO: make this not break if we change pins.
+    // though, PORTC if rather ok.
+
+    // TODO: Re-implement this with SPI instead of bitbanging. 
+
     uint8_t i;
-// clear clock and load bit
+
+    // clear clock and load bit
     PORTC &= ~(_BV(CLK_PIN) | _BV(LOAD_PIN));
 
     // bit bang data in. 
@@ -49,14 +54,11 @@ void maxSend16bits(uint16_t data) {
 }
 
 void maxSend8bits(uint8_t data, uint8_t address) {
-    // uint16_t aux = 0;
-    // aux = (address << 8) | data;
     maxSend16bits((address << 8) | data);
 }
 
 
 void maxSetup() {
-    // something ? 
     /* From data sheet:
         On initial power-up, all control registers are reset, the
         display is blanked, and the MAX7219/MAX7221 enter
@@ -65,9 +67,6 @@ void maxSetup() {
         digit, it will not decode data in the data registers, and
         the intensity register will be set to its minimum value.*/
    
-    // Just set everything high for now. 
-    PORTC = 0xFF;
-
     maxExitTestMode();
     maxSend8bits(0xFF, SCAN_LIMIT_ADDR);
     maxSetDecodeMode(0);
@@ -78,6 +77,7 @@ void maxSetup() {
 
 void maxSetIntensity(uint8_t intensity) {
     // intensity is controller by last 4 bits, 0000 being minimum. 
+    // upper 4 bits are not used. 
     maxSend8bits(intensity, INTENSITY_ADDR);
 }
 
@@ -114,7 +114,8 @@ void maxDisplayNumber(uint8_t number, uint8_t digit, uint8_t enable_dp) {
 void maxDisplayNumbers(uint8_t numbers[NUMBER_OF_DIGITS]) {
     uint8_t i;
     for (i = 0; i < NUMBER_OF_DIGITS; i++) {
-        // hax, we never need a dp elsewhere than at i==5. 
+        // Purkkaviritys \o/
+        // Hax: MSB (bit 7) signifies that we want a DP. 
         if (numbers[i] >= 100) {
             numbers[i] &= ~_BV(7);
             maxDisplayNumber(numbers[i], digits[i], 1);
@@ -137,6 +138,9 @@ int maxDisplayFigure(uint32_t figure, uint8_t start_digit, uint8_t len, uint8_t 
 
     start_digit -= 1;
 
+
+    /* Limit checking and modulo by limit is not needed if we can trust
+       the user to feed only valid figure and len parameters to the function. */
     limit = 1;
     for (i = 0; i < len; i++) {
         limit *= 10;
@@ -149,14 +153,14 @@ int maxDisplayFigure(uint32_t figure, uint8_t start_digit, uint8_t len, uint8_t 
         if (!figure) {  
             if (leading_zero_suppression) {
                 display[i - 1] = BLANK_INDEX; 
-                if (i == start_digit + len && enable_dp) display[i - 1] |= _BV(7); // hax: add dp for last number v. 
+                if (i == start_digit + len && enable_dp) display[i - 1] |= _BV(7); // hax: add dp for last number; use MSB to indicate that we want a dp.  
             } else {
                 display[i - 1] = figure;
             }
 
         } else {
             display[i - 1] = figure % 10; 
-            if (i == start_digit + len && enable_dp) display[i - 1] |= _BV(7); // hax: add dp for last number v. 
+            if (i == start_digit + len && enable_dp) display[i - 1] |= _BV(7); // hax: add dp for last number. 
 
             figure /= 10;                                                                         
         }

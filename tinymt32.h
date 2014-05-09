@@ -29,7 +29,6 @@
 
 #include <stdint.h>
 #include <inttypes.h>
-#include <stdint.h>
 
 #define TINYMT32_MEXP 127
 #define TINYMT32_SH0 1

@@ -10,6 +10,8 @@
 
 #include <avr/io.h>
 
+
+// most aren't used I think
 #define HIGH_BITS 0xF0
 #define LOW_BITS 0x0F
 

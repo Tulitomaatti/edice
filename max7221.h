@@ -75,7 +75,7 @@
 
 #define NUMBER_OF_DIGITS 8
 
-// // function prototypes: 
+// function prototypes: 
 
 void maxSend16bits(uint16_t data);
 void maxSend8bits(uint8_t data, uint8_t address);
