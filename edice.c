@@ -215,11 +215,11 @@ void update_results() {
         // 3 or more dice: 
         } else {
             if (results_scroller_counter < 10) {
-                maxDisplayFigure(results_scroller_counter, 5, 1, status.display_mode);
-                maxDisplayFigure(0, 6, 1, 0);
+                maxDisplayFigure(results_scroller_counter, RESULTS_START_DIGIT, 1, status.display_mode);
+                maxDisplayFigure(0, RESULTS_START_DIGIT + 1, 1, 0);
                 maxDisplayFigure(results[results_scroller_counter - 1], RESULTS_START_DIGIT + 2, 2, 0);
             } else {
-                maxDisplayFigure(results_scroller_counter, 5, 2, status.display_mode);
+                maxDisplayFigure(results_scroller_counter, RESULTS_START_DIGIT, 2, status.display_mode);
                 maxDisplayFigure(results[results_scroller_counter - 1], RESULTS_START_DIGIT + 2, 2, 0);
             }
         }
@@ -262,7 +262,7 @@ void pin_setup() {
 
     // Set port C to output for bitbang communications to max7129
     DDRC |= 0xFF;
-
+    DDRB = 0xFF;
 
     /* Do anything needed for adc/serial comms?*/
     // TODO: enable some ADC pins & adc conversion
