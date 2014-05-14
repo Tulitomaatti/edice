@@ -46,7 +46,6 @@ int main(void) {
     
     init();
 
-
     if (!status.rng_ok) {
         finalize_RNG_init();
     }
@@ -107,6 +106,7 @@ void check_inputs() {
 
     // Change ndice accordingly. 
     number_of_dice = ((enc1_count >> ENC_COUNTER_TUNE_FACTOR) % MAX_THROWS) + 1;
+
     if (!status.display_mode) { 
         die_size = ((enc2_count >> ENC_COUNTER_TUNE_FACTOR) % MAX_DIE_SIZE) + 1; 
         if (die_size < MIN_DIE_SIZE) die_size = MIN_DIE_SIZE;
@@ -232,11 +232,14 @@ void update_results() {
 void init() {
     pin_setup();
     check_inputs();
+
     serial_comm_setup();
 
     
-    // adc_setup();
-    display_setup(10);
+    //adc_setup();
+
+
+    display_setup(0xFF);
 
 
     preinit_RNG();
