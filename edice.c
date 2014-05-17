@@ -22,33 +22,45 @@ volatile uint8_t enc2_count = 12;
 volatile uint8_t die_size = 6;
 volatile uint8_t number_of_dice = 1;
 
-uint8_t results[100] = {0};
-uint8_t results_len = 1;
-uint16_t results_sum = 0;
+volatile uint8_t results[100] = {0};
+volatile uint8_t results_len = 1;
+volatile uint16_t results_sum = 0;
 
 volatile uint8_t results_scroller_counter = 1;
 
 
 volatile struct {
-    uint8_t activity : 1;
-    uint8_t activity_timeout : 1;
     uint8_t rng_ok : 1;
     uint8_t display_mode : 1;
     uint8_t roll_button_pressed : 1;
-    uint8_t enc1_rolled : 1;
-    uint8_t enc2_rolled : 1;
-    uint8_t something : 1;
+    int8_t luck : 2; // -1 for bad luck, 0 for off, 1 for good luck.  
+    uint8_t something : 3;
 } status; 
 
 int main(void) {
-    uint8_t i; 
-  //  uint32_t random_bits;
+   uint8_t i; 
+
     
     init();
 
     if (!status.rng_ok) {
         finalize_RNG_init();
     }
+
+
+    // while(1) {
+
+    //     cli();
+
+    //     if (status.roll_button_pressed) {
+    //         throw_dice();
+    //         update_displays();    
+    //     }
+
+    //     sei();
+
+    //     _delay_ms(5);
+    // }
 
 
     // looping logic: 
@@ -64,17 +76,22 @@ int main(void) {
         
         // Throw dice, store results, calculate sum. 
             if (status.roll_button_pressed) {            
-                results_sum = 0;
-                results_len = number_of_dice;
-                for (i = 0; i < results_len; i++) {
-                    //TODO: make and/or replace rand() here with tinymt32 based function. 
-                    results_sum += results[i] = (rand() % die_size) + 1; // TODO: Fix: % die_size will slant the distribution. 
-                }
+                // results_sum = 0;
+                // results_len = number_of_dice;
+                // for (i = 0; i < results_len; i++) {
+                //     results_sum += results[i] = (random_32int() % die_size) + 1; // TODO: Fix: % die_size will slant the distribution. 
+                // }
+                throw_dice();
             }
         }
 
-        sei();
-        _delay_ms(5);
+
+        
+        
+        // USART_Transmit('\r');
+
+        sei();  
+        _delay_ms(100);
 
     }
 
@@ -82,10 +99,21 @@ int main(void) {
     return 0;
 }
 
+void throw_dice() {
+    uint8_t i;
+    results_sum = 0;
+    results_len = number_of_dice;
+    for (i = 0; i < results_len; i++) {
+        transmit_freeRam(); // adding this here makes this magically work. 
+                            // Otherwise the code will jump back to somewhere around init(), or at least run display_init() again. wtf. 
+        results_sum += results[i] = (random_32int() % die_size) + 1; // TODO: Fix: % die_size will slant the distribution. 
+    }
+}
 
 
 void check_inputs() {
     TCCR2B &= ~(_BV(CS20) | _BV(CS21) | _BV(CS22)); //disable input polling timer, just to be sure.
+
     uint8_t input_port = PIND;
 
     static uint8_t encoder1_state;
@@ -131,6 +159,7 @@ void check_inputs() {
         else if (enc2_count < 1) enc2_count = 198;
     }
 
+
     polling_timer_setup();
 }
 
@@ -147,13 +176,13 @@ ISR(TIMER0_COMPA_vect) {
 
 ISR(TIMER2_OVF_vect) { 
     check_inputs();
+
 }
 
 void update_displays() {
     // remember last display state to avoid futile updating. 
     static uint8_t last_n_dice;
     static uint8_t last_die_size; 
-
 
     if (number_of_dice != last_n_dice) {
         maxDisplayFigure(number_of_dice, N_OF_DICE_START_DIGIT, 2, 0); 
@@ -165,19 +194,6 @@ void update_displays() {
     }
 
     if (results_changed()) update_results();
-
-    // if (last_results_sum != results_sum) {
-    //     update_results();
-    //     last_results_sum = results_sum;
-
-    // } else if (status.display_mode != last_display_mode) {
-    //     update_results();
-    //     last_display_mode = status.display_mode;
-    // } else if (results_scroller_counter != last_scroller_value) {
-    //     update_results();
-    //     last_scroller_value = results_scroller_counter;
-    // }
-
 }
 
 uint8_t results_changed() {
@@ -203,23 +219,38 @@ uint8_t results_changed() {
 void update_results() {
  
     if (status.display_mode) {
-        // TODO: un-disable die size control when only 1 dice is thrown
+        // TODO: brightness control in 2nd mode
+
+        // with 1 & 2 dice, always show decimal point to remind user that we are in that display mode. 
         if (results_len == 1) {
-            maxDisplayFigure(0, 5, 2, status.display_mode);
-            maxDisplayFigure(results[0], 7, 2, 0);
+            maxDisplayFigure(0, RESULTS_START_DIGIT, 4, 1);
+            maxDisplayFigure(results[0], RESULTS_START_DIGIT + 2, 2, 1);
             results_len = 1;
         } else if (results_len == 2) {
-            maxDisplayFigure(results[0], 7, 2, status.display_mode);
-            maxDisplayFigure(results[1], 5, 2, status.display_mode);
+            maxDisplayFigure(results[0], RESULTS_START_DIGIT + 2, 2, 1);
+            maxDisplayFigure(results[1], RESULTS_START_DIGIT, 2, 1);
 
-        // 3 or more dice: 
+        } else if ( die_size < 10 && results_len <= 4) {
+            if (results_len == 3) {
+                maxDisplayFigure(0, RESULTS_START_DIGIT, 1, 0);
+                maxDisplayFigure(results[0], RESULTS_START_DIGIT + 1, 1, 1);
+                maxDisplayFigure(results[1], RESULTS_START_DIGIT + 2, 1, 1);
+                maxDisplayFigure(results[2], RESULTS_START_DIGIT + 3, 1, 1);
+            } else {
+                maxDisplayFigure(results[0], RESULTS_START_DIGIT + 0, 1, 1);
+                maxDisplayFigure(results[1], RESULTS_START_DIGIT + 1, 1, 1);
+                maxDisplayFigure(results[2], RESULTS_START_DIGIT + 2, 1, 1);
+                maxDisplayFigure(results[3], RESULTS_START_DIGIT + 3, 1, 1);
+            }
+
+        // 3 or more dice where size > 9: 
         } else {
             if (results_scroller_counter < 10) {
-                maxDisplayFigure(results_scroller_counter, RESULTS_START_DIGIT, 1, status.display_mode);
+                maxDisplayFigure(results_scroller_counter, RESULTS_START_DIGIT, 1, 1);
                 maxDisplayFigure(0, RESULTS_START_DIGIT + 1, 1, 0);
                 maxDisplayFigure(results[results_scroller_counter - 1], RESULTS_START_DIGIT + 2, 2, 0);
             } else {
-                maxDisplayFigure(results_scroller_counter, RESULTS_START_DIGIT, 2, status.display_mode);
+                maxDisplayFigure(results_scroller_counter, RESULTS_START_DIGIT, 2, 1);
                 maxDisplayFigure(results[results_scroller_counter - 1], RESULTS_START_DIGIT + 2, 2, 0);
             }
         }
@@ -232,6 +263,8 @@ void update_results() {
 void init() {
     pin_setup();
     check_inputs();
+
+    cli();
 
     serial_comm_setup();
 
@@ -262,7 +295,7 @@ void pin_setup() {
 
     // Set port C to output for bitbang communications to max7129
     DDRC |= 0xFF;
-    DDRB = 0xFF;
+    //DDRB = 0xFF;
 
     /* Do anything needed for adc/serial comms?*/
     // TODO: enable some ADC pins & adc conversion
@@ -340,4 +373,25 @@ void polling_timer_setup() {
 void finalize_RNG_init() {
     // TODO: read 16 bit timer and more adc. 
     status.rng_ok = 1;
+}
+
+int freeRam () {
+  extern int __heap_start, *__brkval; 
+  int v; 
+  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+}
+
+void transmit_freeRam() {
+    static uint8_t counter = 0;
+    uint16_t freeram = 0;
+    freeram = freeRam();
+        
+    USART_Transmit(counter++);
+    USART_Transmit(0xFF);
+    USART_Transmit(0);
+    USART_Transmit(0);
+
+
+    USART_Transmit(freeram >> 8);
+    USART_Transmit(freeram & 0x00FF);
 }

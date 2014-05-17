@@ -5,7 +5,7 @@
 
 #ifndef __AVR_ATmega328__
 #define __AVR_ATmega328__
-#define F_CPU 8000000UL // max 16MHz for atmega328p, default 1Mhz 
+#define F_CPU 16000000UL // max 16MHz for atmega328p, default 1Mhz 
 #endif 
 
 #define BAD_SEED 0
@@ -51,6 +51,10 @@ void polling_timer_setup();
 void display_setup(uint8_t brightness);
 
 void check_inputs();
+void throw_dice();
 
+
+int freeRam();
+void transmit_freeRam();
 
 #endif 
