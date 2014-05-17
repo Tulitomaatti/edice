@@ -76,12 +76,11 @@ int main(void) {
         
         // Throw dice, store results, calculate sum. 
             if (status.roll_button_pressed) {            
-                // results_sum = 0;
-                // results_len = number_of_dice;
-                // for (i = 0; i < results_len; i++) {
-                //     results_sum += results[i] = (random_32int() % die_size) + 1; // TODO: Fix: % die_size will slant the distribution. 
-                // }
-                throw_dice();
+                results_sum = 0;
+                results_len = number_of_dice;
+                for (i = 0; i < results_len; i++) {
+                    results_sum += results[i] = (random_32int() % die_size) + 1; // TODO: Fix: % die_size will slant the distribution. 
+                }
             }
         }
 
@@ -91,7 +90,7 @@ int main(void) {
         // USART_Transmit('\r');
 
         sei();  
-        _delay_ms(100);
+        _delay_ms(1);
 
     }
 
