@@ -28,6 +28,7 @@ volatile uint16_t results_sum = 0;
 
 volatile uint8_t results_scroller_counter = 1;
 
+char pad[] = "\x11";
 
 volatile struct {
     uint8_t rng_ok : 1;
@@ -98,16 +99,7 @@ int main(void) {
     return 0;
 }
 
-void throw_dice() {
-    uint8_t i;
-    results_sum = 0;
-    results_len = number_of_dice;
-    for (i = 0; i < results_len; i++) {
-        transmit_freeRam(); // adding this here makes this magically work. 
-                            // Otherwise the code will jump back to somewhere around init(), or at least run display_init() again. wtf. 
-        results_sum += results[i] = (random_32int() % die_size) + 1; // TODO: Fix: % die_size will slant the distribution. 
-    }
-}
+
 
 
 void check_inputs() {

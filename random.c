@@ -34,20 +34,31 @@ uint8_t init_tinymt(uint32_t seed) {
     return 0;
 }
 
-uint8_t random_uint8() {
-    static uint32_t random_bits;
-    static uint8_t counter = 0;
-    uint8_t random_8_bits;
-    if (!counter) random_bits = tinymt32_generate_uint32(&tinymt);
 
-    random_8_bits = random_bits & 0x000000FF;
-        random_bits >>= 8;
+// Is the chip borked?
 
-    if (++counter > 4) counter = 0;
+// uint8_t random_uint8() {
+//     static uint32_t random_bits = 3;
 
-    return random_8_bits;
+//     random_bits++;
+//     random_bits *= 2;
+//     random_bits++; 
+//     random_bits = random_bits ^ 0xAAAAAAAA;
+//     random_bits >>= 3;
 
-}
+//     // static uint8_t counter = 0;
+//     // uint8_t random_8_bits;
+//     // if (!counter) random_bits = tinymt32_generate_uint32(&tinymt);
+
+//     // random_8_bits = random_bits & 0x000000FF;
+//     //     random_bits >>= 8;
+
+//     // if (++counter > 4) counter = 0;
+
+//     // return random_8_bits;
+//     return 4;
+
+// }
 
 uint8_t random_uint8_range(uint8_t min_inclusive, uint8_t max_inclusive) {
     uint8_t range = max_inclusive - min_inclusive;
@@ -55,6 +66,7 @@ uint8_t random_uint8_range(uint8_t min_inclusive, uint8_t max_inclusive) {
     uint8_t random_number;
 
     do {
+        transmit_freeRam();
         random_number = (random_32int() & 0xFF) / interval;
     } while (random_number > range);
 

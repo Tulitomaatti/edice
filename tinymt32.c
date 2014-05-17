@@ -26,6 +26,8 @@
 
 
 #include "tinymt32.h"
+
+
 #define MIN_LOOP 8
 #define PRE_LOOP 8
 
@@ -85,6 +87,8 @@ void tinymt32_init(tinymt32_t * random, uint32_t seed) {
     period_certification(random);
     for (i = 0; i < PRE_LOOP; i++) {
 	tinymt32_next_state(random);
+
+
     }
 }
 
