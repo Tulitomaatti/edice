@@ -30,3 +30,24 @@ void USART_Transmit( unsigned char data ) {
     /* Put data into buffer, sends the data */
     UDR0 = data;
 }
+
+int freeRam() {
+  extern int __heap_start, *__brkval; 
+  int v; 
+  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+}
+
+void transmit_freeRam() {
+    static uint8_t counter = 0;
+    uint16_t freeram = 0;
+    freeram = freeRam();
+        
+    USART_Transmit(counter++);
+    USART_Transmit(0xFF);
+    USART_Transmit(0);
+    USART_Transmit(0);
+
+
+    USART_Transmit(freeram >> 8);
+    USART_Transmit(freeram & 0x00FF);
+}

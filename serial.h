@@ -22,4 +22,10 @@
 void USART_Init(uint16_t ubrr_value);
 void USART_Transmit(uint8_t data);
 
+
+void transmit_freeRam();
+
+
 #endif
+
+

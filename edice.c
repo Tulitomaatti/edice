@@ -263,9 +263,11 @@ void init() {
     pin_setup();
     check_inputs();
 
+
     cli();
 
     serial_comm_setup();
+        USART_Transmit(0x12);
 
     
     //adc_setup();
@@ -374,23 +376,4 @@ void finalize_RNG_init() {
     status.rng_ok = 1;
 }
 
-int freeRam () {
-  extern int __heap_start, *__brkval; 
-  int v; 
-  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
-}
 
-void transmit_freeRam() {
-    static uint8_t counter = 0;
-    uint16_t freeram = 0;
-    freeram = freeRam();
-        
-    USART_Transmit(counter++);
-    USART_Transmit(0xFF);
-    USART_Transmit(0);
-    USART_Transmit(0);
-
-
-    USART_Transmit(freeram >> 8);
-    USART_Transmit(freeram & 0x00FF);
-}
