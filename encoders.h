@@ -12,14 +12,14 @@
 
 
 // most aren't used I think
-#define HIGH_BITS 0xF0
-#define LOW_BITS 0x0F
+// #define HIGH_BITS 0xF0
+// #define LOW_BITS 0x0F
 
-#define ENCODER_PIN PORTD
-#define ENCODER_1A 0
-#define ENCODER_1B 1
-#define ENCODER_2A 2
-#define ENCODER_2B 3
+// #define ENCODER_PIN PORTD
+// #define ENCODER_1A 0
+// #define ENCODER_1B 1
+// #define ENCODER_2A 2
+// #define ENCODER_2B 3
 
 
 // uint8_t readEncoderState();

@@ -31,7 +31,7 @@
 
 void display_update_timer_setup();
 void update_results();
-void cool_visual_effects(uint8_t count);
+// void cool_visual_effects(uint8_t count);
 
 void preinit_RNG();
 void finalize_RNG_init();
@@ -51,7 +51,7 @@ void polling_timer_setup();
 void display_setup(uint8_t brightness);
 
 void check_inputs();
-void throw_dice();
+// void throw_dice();
 
 
 int freeRam();
