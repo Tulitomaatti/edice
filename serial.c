@@ -38,14 +38,14 @@ int freeRam() {
 }
 
 void transmit_freeRam() {
-    static uint8_t counter = 0;
-    uint16_t freeram = 0;
+    // static uint8_t counter = 0;
+    uint16_t freeram;
     freeram = freeRam();
         
-    USART_Transmit(counter++);
-    USART_Transmit(0xFF);
-    USART_Transmit(0);
-    USART_Transmit(0);
+    // USART_Transmit(counter++);
+    // USART_Transmit(0xFF);
+    // USART_Transmit(0);
+    // USART_Transmit(0);
 
 
     USART_Transmit(freeram >> 8);

@@ -15,7 +15,58 @@
 #include "random.h"
 
 
+/* Debug magic variables */
+extern uint8_t _end; 
+extern uint8_t __stack;
+uint16_t stackcount;
+
+
+void StackPaint(void) __attribute__ ((naked)) __attribute__ ((section (".init1"))); 
+
+void StackPaint(void) 
+{ 
+#if 0 
+    uint8_t *p = &_end; 
+
+    while(p <= &__stack) 
+    { 
+        *p = STACK_CANARY; 
+        p++; 
+    } 
+#else 
+    __asm volatile ("    ldi r30,lo8(_end)\n" 
+                    "    ldi r31,hi8(_end)\n" 
+                    "    ldi r24,lo8(0xc5)\n" /* STACK_CANARY = 0xc5 */ 
+                    "    ldi r25,hi8(__stack)\n" 
+                    "    rjmp .cmp\n" 
+                    ".loop:\n" 
+                    "    st Z+,r24\n" 
+                    ".cmp:\n" 
+                    "    cpi r30,lo8(__stack)\n" 
+                    "    cpc r31,r25\n" 
+                    "    brlo .loop\n" 
+                    "    breq .loop"::); 
+#endif 
+}
+
+uint16_t StackCount(void) 
+{ 
+    const uint8_t *p = &_end; 
+    uint16_t       c = 0; 
+
+    while(*p == 0xc5 && p <= &__stack) 
+    { 
+        p++; 
+        c++; 
+    } 
+
+    return c; 
+}
+
+
 /* Global variables */
+uint16_t seed;
+
 volatile uint8_t enc1_count = 2;
 volatile uint8_t enc2_count = 12; 
 
@@ -175,6 +226,38 @@ void check_inputs() {
     }
 
 
+    if (status.roll_button_pressed) {
+        stackcount = StackCount();
+
+
+
+        USART_Transmit(0xAA);
+
+        USART_Transmit(stackcount >> 8);
+        USART_Transmit(stackcount);
+
+        USART_Transmit(0xBB);
+
+        transmit_freeRam();
+
+        USART_Transmit(0xFF);
+
+
+        USART_Transmit(0x01);
+
+        USART_Transmit(0x02);
+        USART_Transmit(0x03);
+
+        USART_Transmit(0x04);
+
+        USART_Transmit(0x05);
+        USART_Transmit(0x06);
+
+        USART_Transmit(0xFF);
+
+
+    }
+
     polling_timer_setup();
 }
 
@@ -189,9 +272,12 @@ ISR(TIMER0_COMPA_vect) {
 }
 
 
+ISR(TIMER1_OVF_vect) {
+    reti();
+}
+
 ISR(TIMER2_OVF_vect) { 
     check_inputs();
-
 }
 
 void update_displays() {
@@ -279,12 +365,23 @@ void init() {
     pin_setup();
     check_inputs();
 
+    rng_timer_setup();
+
 
     cli();
 
-    // serial_comm_setup();
-    //     USART_Transmit(0x12);
+    serial_comm_setup();
 
+
+    // debug magic: 
+    stackcount = StackCount();
+
+    USART_Transmit(0xAA);
+    USART_Transmit(stackcount >> 8);
+    USART_Transmit(stackcount);
+    USART_Transmit(0xBB);
+    transmit_freeRam();
+    USART_Transmit(0xFF);
     
     //adc_setup();
 
@@ -357,8 +454,10 @@ void display_update_timer_setup() {
     TIMSK0 |=  _BV(OCIE0A) | _BV(TOIE0);
 }
 
-void rng_seeding_timer_setup() {
+void rng_timer_setup() {
     //TODO: Enable 16bit timer, make a function to get cycles.
+    TCCR1B |= _BV(CS01);
+    //TIMSK1 |= _BV(TOIE1);
 }
 
 

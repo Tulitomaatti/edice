@@ -47,7 +47,7 @@ void adc_setup();
 void serial_comm_setup();
 
 void polling_timer_setup();
-
+void rng_timer_setup();
 void display_setup(uint8_t brightness);
 
 void check_inputs();
