@@ -11,6 +11,13 @@
 #include <avr/io.h>
 
 
+// E:07, H:D9, L:E0)
+// external clock fuses. 
+
+// default fuses:
+// (E:07, H:D9, L:62)
+
+
 // most aren't used I think
 // #define HIGH_BITS 0xF0
 // #define LOW_BITS 0x0F
