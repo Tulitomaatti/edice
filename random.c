@@ -45,6 +45,8 @@ uint8_t random_uint8() {
     random_bits++; 
 
     _NOP();_NOP();
+	
+	random_bits++;
 
     // random_bits++; 
     // random_bits = random_bits ^ 0xAAAAAAAA;

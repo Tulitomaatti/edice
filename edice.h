@@ -51,7 +51,10 @@ void rng_timer_setup();
 void display_setup(uint8_t brightness);
 
 void check_inputs();
-// void throw_dice();
+void throw_dice();
+
+void read_adc(uint8_t pin);
+uint32_t get_analog_noise();
 
 
 int freeRam();

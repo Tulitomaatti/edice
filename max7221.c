@@ -23,32 +23,40 @@ void maxSend16bits(uint16_t data) {
     uint8_t i;
 
     // clear clock and load bit
-    PORTC &= ~(_BV(CLK_PIN) | _BV(LOAD_PIN));
+    // PORTC &= ~(_BV(CLK_PIN) | _BV(LOAD_PIN));
+	BITBANG_PORT &= ~(_BV(CLK_PIN) | _BV(LOAD_PIN));
+	
 
     // bit bang data in. 
     for (i = 0; i < 16; i++) {
         // MSB goes in first. 
         if ( (0x01 & (data >> (15-i))) ) {
-            PORTC |= _BV(DATA_PIN); 
+            // PORTC |= _BV(DATA_PIN); 
+			BITBANG_PORT |= _BV(DATA_PIN);
         } else {
-            PORTC &= ~_BV(DATA_PIN);
+            // PORTC &= ~_BV(DATA_PIN);
+			BITBANG_PORT &= ~_BV(DATA_PIN);
         }
 
         // seems to be stable even without this. 
         _delay_loop_1(DATA_DELAY);
 
         // Tick Tock
-        PORTC |= _BV(CLK_PIN);
+        // PORTC |= _BV(CLK_PIN);
+		BITBANG_PORT |= _BV(CLK_PIN);
         _delay_loop_2(CLK_PULSE * HICLOCK_ADJUST); // makes clock look nicer on scope.
-        PORTC &= ~_BV(CLK_PIN);    
+        // PORTC &= ~_BV(CLK_PIN);    
+		BITBANG_PORT &= ~_BV(CLK_PIN); 
     }
 
     // set load bit to latch data. 
-    PORTC |= 0x01;
+    // PORTC |= 0x01;
+	BITBANG_PORT |= 0x01;
     
     // clear clock and data (not mandatory, maybe.)
     _delay_loop_1(CLK_PULSE); // might work without this one.
-    PORTC &= ~(_BV(DATA_PIN) | _BV(CLK_PIN));
+    // PORTC &= ~(_BV(DATA_PIN) | _BV(CLK_PIN));
+	BITBANG_PORT &= ~(_BV(DATA_PIN) | _BV(CLK_PIN));
     _delay_loop_1(CLK_PULSE); // should work without this one.
 
 }

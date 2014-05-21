@@ -24,7 +24,7 @@ void USART_Transmit(uint8_t data);
 
 
 void transmit_freeRam();
-
+void transmit_32(uint32_t data);
 
 #endif
 

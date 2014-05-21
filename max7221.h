@@ -16,9 +16,22 @@
 #ifndef MAX7221_H
 #define MAX7221_H
 
+/*For portc tripwires */
+// #define CS_PIN 0
+// #define CLK_PIN 1
+// #define DATA_PIN 2
+
+#define BITBANG_DDR DDRB
+
+#define BITBANG_PORT PORTB // BITBANG_PORT for pcb lines. portc for tripwire lines. 
+
+// for BITBANG_PORT (on miso/mosi/sck pins)
 #define CS_PIN 0
-#define CLK_PIN 1
-#define DATA_PIN 2
+#define CLK_PIN 3
+#define DATA_PIN 5
+
+
+
 #define LOAD_PIN CS_PIN
 
 // #define DATA_PORT PORTC
