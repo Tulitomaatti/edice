@@ -2,6 +2,7 @@
 
 
 #include "max7221.h"
+#include "edice.h"
 #include <inttypes.h> 
 #include <avr/io.h>
 #include <util/delay.h>
@@ -10,7 +11,7 @@
 
 static const uint8_t numbers[12] = {NUMBERS};
 static const uint8_t digits[NUMBER_OF_DIGITS] = {DIGITS};
-static uint8_t leading_zero_suppression = 1;
+// static uint8_t leading_zero_suppression = 0;
 static uint8_t display[8];
 
 /* Functions for sending data */
@@ -134,8 +135,57 @@ void maxDisplayNumbers(uint8_t numbers[NUMBER_OF_DIGITS]) {
 }
 
 
+void cool_visual_effects(uint8_t count) {
+	const uint8_t pattern_1 = _BV(SEGF) | _BV(SEGA) | _BV(SEGB);
+	const uint8_t pattern_2 = _BV(SEGC) | _BV(SEGE) | _BV(SEGD); 
+	const uint8_t loopie_1[8] = {_BV(SEGA), _BV(SEGB), _BV(SEGG), _BV(SEGE), _BV(SEGD), _BV(SEGC), _BV(SEGG), _BV(SEGF)};
+	const uint8_t loopie_2[8] = {_BV(SEGG), _BV(SEGF), _BV(SEGA), _BV(SEGB), _BV(SEGG), _BV(SEGE), _BV(SEGD), _BV(SEGC)};
+	const uint8_t loopie_3[8] = {_BV(SEGD), _BV(SEGC), _BV(SEGG), _BV(SEGF), _BV(SEGA), _BV(SEGB), _BV(SEGG), _BV(SEGE)};
+	const uint8_t loopie_4[8] = {_BV(SEGG), _BV(SEGF), _BV(SEGA), _BV(SEGB), _BV(SEGG), _BV(SEGE), _BV(SEGD), _BV(SEGC)};
+	uint8_t i, j, k;
+	uint8_t adjusted_delay;
+	uint8_t delay_counter;
+	
 
-int maxDisplayFigure(uint32_t figure, uint8_t start_digit, uint8_t len, uint8_t enable_dp) {
+	for (k = 0; k < 2; k++) {
+	for (j = 0; j < 8; j++) {
+		delay_counter = (24);
+		for (i = 0; i < count; i++) {
+			
+			switch (count) {
+				case 4:
+					maxSend8bits(loopie_4[j], digits[RESULTS_START_DIGIT - 2 + 4 - 3]);
+				case 3:
+					maxSend8bits(loopie_3[j], digits[RESULTS_START_DIGIT - 2 + 4 - 2]);
+				case 2:
+					maxSend8bits(loopie_2[j], digits[RESULTS_START_DIGIT - 2 + 4 - 1]);
+				case 1:
+					maxSend8bits(loopie_1[j], digits[RESULTS_START_DIGIT - 2 + 4 - 0]);
+			}
+
+
+
+		}
+		while (delay_counter--) _delay_us(800);
+	}
+	}
+		
+}	
+	
+// 	
+// 	maxSend8bits(pattern_1, digits[RESULTS_START_DIGIT - 1]);
+// 	maxSend8bits(pattern_2, digits[RESULTS_START_DIGIT - 1] + 1);
+// 	maxSend8bits(pattern_1, digits[RESULTS_START_DIGIT - 1] + 2);
+// 	maxSend8bits(pattern_2, digits[RESULTS_START_DIGIT - 1] + 3);
+// 	_delay_ms(100);
+// 	maxSend8bits(pattern_2, digits[RESULTS_START_DIGIT - 1]);
+// 	maxSend8bits(pattern_1, digits[RESULTS_START_DIGIT - 1] + 1);
+// 	maxSend8bits(pattern_2, digits[RESULTS_START_DIGIT - 1] + 2);
+// 	maxSend8bits(pattern_1, digits[RESULTS_START_DIGIT - 1] + 3);
+// 	_delay_ms(100);
+//}
+
+int maxDisplayFigure(uint32_t figure, uint8_t start_digit, uint8_t len, uint8_t enable_dp, uint8_t leading_zero_suppression) {
     uint8_t i;
     uint32_t limit;
 
@@ -164,6 +214,7 @@ int maxDisplayFigure(uint32_t figure, uint8_t start_digit, uint8_t len, uint8_t 
                 if (i == start_digit + len && enable_dp) display[i - 1] |= _BV(7); // hax: add dp for last number; use MSB to indicate that we want a dp.  
             } else {
                 display[i - 1] = figure;
+				if (i == start_digit + len && enable_dp) display[i - 1] |= _BV(7);
             }
 
         } else {

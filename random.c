@@ -4,6 +4,8 @@
 #include "random.h"
 #include "serial.h"
 #include <avr/cpufunc.h> 
+#include <avr/io.h>
+#include "edice.h"
 
 static tinymt32_t tinymt;
 
@@ -18,10 +20,18 @@ uint8_t random_int() {
 }
 
 uint32_t random_32int() {
-    return tinymt32_generate_uint32(&tinymt);
+// 	//extern uint16_t timer1_overflow_counter;
+// 	uint32_t randomness = 0;
+// // 	rand = TCNT1;
+// // 	rand <<= 16;
+// // 	rand ^= timer1_overflow_counter;
+//     randomness ^= tinymt32_generate_uint32(&tinymt);
+// 	randomness ^= get_analog_noise(1);
+// 	
+// 	return randomness;
+
+return tinymt32_generate_uint32(&tinymt);
 }
-
-
 
 uint8_t init_tinymt(uint32_t seed) {
     // magic numbers from tinymt32dc program. 
@@ -34,53 +44,38 @@ uint8_t init_tinymt(uint32_t seed) {
     return 0;
 }
 
-
-// Is the chip borked?
-
 uint8_t random_uint8() {
-    static volatile uint32_t random_bits = 3;
+	static uint8_t counter = 1;
+	uint8_t random_8_bits;
+    static uint32_t random_bits;
 
-    random_bits++;
-    // random_bits *= 2;
-    random_bits++; 
+    if (counter == 1) random_bits = tinymt32_generate_uint32(&tinymt);
 
-    _NOP();_NOP();
+    random_8_bits = random_bits & 0x000000FF;
+    random_bits >>= 8;
 	
-	random_bits++;
+	counter++;
+    if (counter == 4) counter = 1;
+	
+// 	random_8_bits ^= TCNT1;
+// 	random_8_bits ^= get_analog_noise_8(1);
 
-    // random_bits++; 
-    // random_bits = random_bits ^ 0xAAAAAAAA;
-    // random_bits >>= 3;
-
-
-
-    // static uint8_t counter = 0;
-    // uint8_t random_8_bits;
-    // if (!counter) random_bits = tinymt32_generate_uint32(&tinymt);
-
-    // random_8_bits = random_bits & 0x000000FF;
-    //     random_bits >>= 8;
-
-    // if (++counter > 4) counter = 0;
-
-    // return random_8_bits;
-    return 4;
-
+	return random_8_bits;
 }
 
-// uint8_t random_uint8_range(uint8_t min_inclusive, uint8_t max_inclusive) {
-//     uint8_t range = max_inclusive - min_inclusive;
-//     uint8_t interval = EIGHT_BIT_RAND_MAX / (range + 1);
-//     uint8_t random_number;
+uint8_t scale_random_uint8_range(uint8_t max_inclusive) { // returns random number [1, max_inclusive]
+	max_inclusive--;
 
-//     do {
-//         transmit_freeRam();
-//         random_number = (random_32int() & 0xFF) / interval;
-//     } while (random_number > range);
+    uint8_t interval = EIGHT_BIT_RAND_MAX / (max_inclusive + 1);
+    uint8_t random_number;
 
-//     return random_number + min_inclusive;
+    do {
+        random_number = random_uint8() / interval;
+		//random_number = (random_32int() & 0x000000FF) / interval;
+    } while (random_number > max_inclusive);
 
-//}
+    return random_number + 1;
+}
 
 
 // magic parameters from parameter generator:

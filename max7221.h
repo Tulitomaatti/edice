@@ -10,7 +10,7 @@
 
 #include <inttypes.h>
 #include <avr/io.h>
-#include <util/delay.h>
+#include "delay.h"
 
 
 #ifndef MAX7221_H
@@ -94,7 +94,7 @@ void maxSend16bits(uint16_t data);
 void maxSend8bits(uint8_t data, uint8_t address);
 void maxDisplayNumber(uint8_t number, uint8_t digit, uint8_t enable_dp);
 void maxDisplayNumbers(uint8_t numbers[NUMBER_OF_DIGITS]);
-int maxDisplayFigure(uint32_t figure, uint8_t start_digit, uint8_t len, uint8_t enable_dp);
+int maxDisplayFigure(uint32_t figure, uint8_t start_digit, uint8_t len, uint8_t enable_dp, uint8_t leading_zero_suppression);
 void maxShutdown(); 
 void maxAddDP(uint8_t digit, volatile uint8_t *display);
 void maxUnShutdown(); 
@@ -103,6 +103,7 @@ void maxEnterTestMode();
 void maxExitTestMode();
 void maxSetIntensity(uint8_t intensity);
 
+void cool_visual_effects(uint8_t count);
 // // not really fit to be here 
 // uint8_t numberOfDecimalDigits(uint32_t x);
 

@@ -6,6 +6,7 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <avr/sleep.h>
 #include <util/delay.h>
 
 #include <stdlib.h>
@@ -14,6 +15,7 @@
 #include "encoders.h"
 #include "serial.h"
 #include "random.h"
+
 
 
 /* Debug magic variables & functions */
@@ -69,12 +71,21 @@ uint16_t StackCount(void)
 uint32_t seed;
 uint16_t timer1_overflow_counter = 0;
 uint16_t adc_result;
+uint8_t luck_counter = 0;
+uint32_t luck_timout_counter = 0;
+uint8_t lucky_number_visited = 0; 
+uint8_t luck_expiry_counter = 0;
 
 volatile uint8_t enc1_count = 2;
-volatile uint8_t enc2_count = 12;
+volatile uint8_t enc2_count = 10;
+
+volatile uint8_t encoder1_state;
+volatile uint8_t encoder2_state;
 
 volatile uint8_t die_size = 6;
 volatile uint8_t number_of_dice = 1;
+volatile uint8_t results_scroller = 1;
+volatile uint8_t brightness_global = 0x0A;
 
 volatile uint8_t results[100] = {0};
 volatile uint8_t results_len = 1;
@@ -90,87 +101,178 @@ volatile struct {
 	uint8_t rng_ok : 1;
 	uint8_t display_mode : 1;
 	uint8_t roll_button_pressed : 1;
-	int8_t luck : 2; // -1 for bad luck, 0 for off, 1 for good luck.
-	uint8_t something : 3;
+	uint8_t luck : 1; //  1 for good luck, 0 for normal operation.
+	uint8_t brightness : 4;
 } status;
 
 int main(void) {
+	uint8_t pressing = 0;
+	uint8_t count = 0;
+	uint8_t thrown = 0;
+	uint16_t max_result;
+	uint32_t temp;
 	uint8_t i;
-	// uint16_t j;
-	// uint8_t *p;
-	
 	init();
 
-
-
+// 
+// 	if (RANDOMNESS_TESTING_MODE) {
+// 		cli();
+// 		finalize_RNG_init();
+// 		
+// 		maxDisplayFigure(1337, 1, 8, 1, 0);
+// 		
+// 		while (1){
+// 			
+// 			cli();
+// 			die_size = 2;
+// 			number_of_dice = 1;
+// 			
+// 			throw_dice();
+// 			USART_Transmit(results[0]);
+// 			
+// 	/*		i++;*/
+// 			//USART_Transmit(random_uint8());
+// 			//temp = random_32int();
+// // 			temp = random();
+// // 	 		USART_Transmit(temp >> 24);
+// // 	 		USART_Transmit(temp >> 16);
+// // 			USART_Transmit(temp >> 8);
+// // 			USART_Transmit(temp);
+// 		}
+// 	}
 
 	// looping logic:
 	while (1) {
+		
+		cli();
+		
+		if (RANDOMNESS_TESTING_MODE) {
+			
+			
+			if (!status.rng_ok) {
+				finalize_RNG_init();
+			}
+			pressing = 1;
+			
+			max_result = die_size * number_of_dice;
+			if (max_result < 10) count = 1;
+			else if (max_result < 100) count = 2;
+			else if (max_result < 1000) count = 3;
+			else count = 4;
+			
+			throw_dice();
+			
+			if (status.display_mode) USART_Transmit(results[i]);
+			else USART_Transmit(results_sum);
+			
+			}
+		
+		
+		
+		if (status.roll_button_pressed) {
+			if (!status.rng_ok) {
+				finalize_RNG_init();
+				set_sleep_mode(SLEEP_MODE_PWR_SAVE);
+			}
+			pressing = 1;
+			
+			max_result = die_size * number_of_dice;
+			if (max_result < 10) count = 1;
+			else if (max_result < 100) count = 2;
+			else if (max_result < 1000) count = 3; 
+			else count = 4;
+			
+			if (!thrown) {
+				throw_dice();
+				thrown = 1;
+			}
+			maxDisplayFigure(0,RESULTS_START_DIGIT,3,0,1);
+			if (number_of_dice == 2) cool_visual_effects(4);
+			else if (number_of_dice == 3) cool_visual_effects(3);
+			else cool_visual_effects(count);
 
-
-// 		cli();
-// 
-// 		// if (RANDOMNESS_TESTING_MODE) {
-// 		//     USART_Transmit(random_32int());
-// 
-// 		//     //USART_Transmit(0x55);
-// 		//     continue;
-// 		// } else {
-// 		
-// 		// Throw dice, store results, calculate sum.
-// 		if (status.roll_button_pressed) {
-// 			throw_dice();
-// // 			results_sum = 0;
-// // 			results_len = number_of_dice;
-// // 			for (i = 0; i < results_len; i++) {
-// // 				results_sum += results[i] = (random_32int() % die_size) + 1; // TODO: Fix: % die_size will slant the distribution.
-// // 			}
-// 		}
-// 
-// 		sei();
-		//_delay_ms(200);
-
+			
+		} else {
+			if (pressing) {
+				update_results();
+				thrown = 0;
+				pressing = 0;
+			} 
+		}
+		
+		sei();		
+		_delay_us(10);
+		
+		// go to sleep until interrupted. 
+		if(!RANDOMNESS_TESTING_MODE) {	
+		cli();
+		sleep_enable();
+		sleep_bod_disable();
+		sei();
+		sleep_cpu();
+		sleep_disable();
+		
+		cli();
+		}
+		check_inputs();
+		sei();
 	}
 
-	// TODO: Go to power saving mode, wait for an timer interrupt.
-	return 0;
+	return 0;	
 }
-
 
 
 //update displays on every overflow (and halfway up)
 ISR(TIMER0_OVF_vect) { // Display updating timer
-	update_displays();
+	if (!status.roll_button_pressed) update_displays();
 }
 
 ISR(TIMER0_COMPA_vect) { // Display updating timer
-	update_displays();
+	if (!status.roll_button_pressed) update_displays();
 }
 
 ISR(TIMER1_OVF_vect) { // RNG seeding timer
-
 	timer1_overflow_counter++;
 }
 
 ISR(TIMER2_OVF_vect) { // Input checking timer
-	check_inputs();
-	if (status.roll_button_pressed) {
-		if (!status.rng_ok) {
-			finalize_RNG_init();
-		} else {
-			throw_dice();
+	static uint8_t last_display_mode = 3;
+	if (status.luck) {
+		luck_expiry_counter--;
+		if (luck_expiry_counter == 0) {
+			status.luck = 0;
+			//maxExitTestMode();
 		}
-	//_delay_ms(200); // now we can see results in order.
+	} else {
+	luck_timout_counter++; 
+	if (luck_timout_counter > 0x0AFF) {
+		luck_timout_counter = 0;
+		luck_counter = 0;
 	}
+	
+	if (last_display_mode != status.display_mode) {
+		luck_counter++;
+		last_display_mode = status.display_mode;
+	}
+	
+	
+	if (lucky_number_visited && luck_counter > 4) {
+		status.luck = 1;
+		luck_expiry_counter = 0x0F;
+		//maxEnterTestMode();
+	} 
+	}	
+	// input is checked in main, this just wakes cpu from sleep. 
 }
 
 void check_inputs() {
 	TCCR2B &= ~(_BV(CS20) | _BV(CS21) | _BV(CS22)); //disable input polling timer, just to be sure.
 
 	uint8_t input_port = PIND;
+	uint8_t aux = 0;
 
-	static uint8_t encoder1_state;
-	static uint8_t encoder2_state;
+	static uint8_t scroller_counter;
+
 	// button
 	status.roll_button_pressed = ~(input_port >> PIND7);
 
@@ -182,40 +284,48 @@ void check_inputs() {
 	encoder1_state |= (((input_port >> (PIND2 - 1) ) & 0x02) | ((input_port >> PIND3) & 0x01) ) & 0x0f;
 	
 	enc1_count += new_decode_encoder(encoder1_state);
-	if (enc1_count > 198) enc1_count = 1;
-	else if (enc1_count < 1) enc1_count = 198;
+	if (enc1_count > 201) enc1_count = 1;
+	else if (enc1_count < 1) enc1_count = 201;
 
 	// Change ndice accordingly.
 	number_of_dice = ((enc1_count >> ENC_COUNTER_TUNE_FACTOR) % MAX_THROWS) + 1;
-
-	if (!status.display_mode) {
-		die_size = ((enc2_count >> ENC_COUNTER_TUNE_FACTOR) % MAX_DIE_SIZE) + 1;
-		if (die_size < MIN_DIE_SIZE) die_size = MIN_DIE_SIZE;
-	}
 
 
 	// encoder 2
 	encoder2_state <<= 2;
 	encoder2_state |= (((input_port >> (PIND4 - 1)) & 0x02) | ((input_port >> PIND5) & 0x01) ) & 0x0f;
-
-	// -> die size or scroller:
-	if (status.display_mode) {
-		results_scroller_counter += new_decode_encoder(encoder2_state);
-
-		if (results_scroller_counter > results_len) results_scroller_counter = 1;
-		else if (results_scroller_counter == 0) results_scroller_counter = results_len;
-
-		} else {
-		enc2_count += new_decode_encoder(encoder2_state);
-
-		if (enc2_count > 198) enc2_count = 1;
-		else if (enc2_count < 1) enc2_count = 198;
-	}
-
-	// 	if (status.roll_button_pressed) {
-	// 		stackcount = StackCount();
-	//}
+	aux += new_decode_encoder(encoder2_state);
 	
+	// -> die size or scroller:
+	
+	if (status.display_mode) {
+		if (number_of_dice < 3) {
+			status.brightness += aux;
+		} else {
+			scroller_counter += aux;
+			
+			if (scroller_counter > 201) scroller_counter = 1;
+			else if (scroller_counter < 1) scroller_counter = 201;
+			
+			results_scroller_counter = ((scroller_counter >> ENC_COUNTER_TUNE_FACTOR) % results_len) + 1;
+			
+			if (results_scroller_counter > results_len) results_scroller_counter = 1;
+			else if (results_scroller_counter == 0) results_scroller_counter = results_len;
+		}
+		
+	} else {
+		enc2_count += aux;
+
+		if (enc2_count > 201) enc2_count = 1;
+		else if (enc2_count < 1) enc2_count = 201;
+	}
+	die_size = ((enc2_count >> ENC_COUNTER_TUNE_FACTOR) % MAX_DIE_SIZE) + 1;
+	if (die_size < MIN_DIE_SIZE) die_size = MIN_DIE_SIZE;
+
+
+	if (number_of_dice == 13 && die_size == 37) lucky_number_visited = 1; 
+
+
 	polling_timer_setup();
 }
 
@@ -223,25 +333,59 @@ void update_displays() {
 	// remember last display state to avoid futile updating.
 	static uint8_t last_n_dice;
 	static uint8_t last_die_size;
-
-	if (number_of_dice != last_n_dice) {
-		maxDisplayFigure(number_of_dice, N_OF_DICE_START_DIGIT, 2, 0);
-		last_n_dice = number_of_dice;
+	static uint8_t last_brightness;
+	
+	
+	// if we have 100 don't use leading zero suppression to get 00 on the screen. 
+	if (number_of_dice != last_n_dice || last_die_size != die_size) {
+		if (number_of_dice == 100) {
+			maxDisplayFigure(number_of_dice, N_OF_DICE_START_DIGIT, 2, 0, 0);
+			last_n_dice = number_of_dice;
+		} else {
+			maxDisplayFigure(number_of_dice, N_OF_DICE_START_DIGIT, 2, 0, 1);
+			last_n_dice = number_of_dice;
+		}
 	}
 	if (die_size != last_die_size) {
-		maxDisplayFigure(die_size, DIE_SIZE_START_DIGIT, 2, 0);
-		last_die_size = die_size;
+		if (die_size == 100) {
+			maxDisplayFigure(die_size, DIE_SIZE_START_DIGIT, 2, 0, 0);
+			last_die_size = die_size;
+		} else {
+			maxDisplayFigure(die_size, DIE_SIZE_START_DIGIT, 2, 0, 1);
+			last_die_size = die_size;
+		}
+	}
+	
+	
+	if (last_brightness != status.brightness) {
+		maxSetIntensity(status.brightness | 0xF0);
+		last_brightness = status.brightness;
 	}
 
 	if (results_changed()) update_results();
 }
 
 void throw_dice() {
-	uint8_t i;
+	uint8_t i, temp;
 	results_sum = 0;
 	results_len = number_of_dice;
 	for (i = 0; i < results_len; i++) {
-		results_sum += results[i] = (random_32int() % die_size) + 1; // TODO: Fix: % die_size will slant the distribution.
+		// results_sum += results[i] = ( ((random_32int() ^ TCNT1)  ) % die_size) + 1; // TODO: Fix: % die_size will slant the distribution.
+		//results_sum += results[i] =  (random_uint8()   % die_size) + 1; // TODO: Fix: % die_size will slant the distribution.
+ 	//	temp = random_uint8();
+// 		temp ^= TCNT1;
+// 	//	temp ^= get_analog_noise_8(1);
+// 		
+		
+ 		results[i] = scale_random_uint8_range(die_size); 
+		
+		if (status.luck && results[i] < die_size / 2) { // scale results if we are in a lucky mood. 
+			temp = scale_random_uint8_range(die_size);
+			if (temp > results[i]) results[i] = temp;
+		} 
+		 
+		results_sum += results[i];
+
 	}
 }
 
@@ -251,14 +395,14 @@ uint8_t results_changed() {
 	static uint8_t last_scroller_value;
 
 	if (last_results_sum != results_sum) {
-		last_results_sum = results_sum;
-		return 1;
-		} else if (last_display_mode != status.display_mode) {
-		last_display_mode = status.display_mode;
-		return 1;
-		} else if (last_scroller_value != results_scroller_counter) {
-		last_scroller_value = results_scroller_counter;
-		return 1;
+			last_results_sum = results_sum;
+			return 1;
+	} else if (last_display_mode != status.display_mode) {
+			last_display_mode = status.display_mode;
+			return 1;
+	} else if (last_scroller_value != results_scroller_counter) {
+			last_scroller_value = results_scroller_counter;
+			return 1;
 	}
 
 
@@ -266,84 +410,104 @@ uint8_t results_changed() {
 }
 
 void update_results() {
+	uint8_t i;
 	
 	if (status.display_mode) {
 		// TODO: brightness control in 2nd mode
 
 		// with 1 & 2 dice, always show decimal point to remind user that we are in that display mode.
 		if (results_len == 1) {
-			maxDisplayFigure(0, RESULTS_START_DIGIT, 4, 1);
-			maxDisplayFigure(results[0], RESULTS_START_DIGIT + 2, 2, 1);
-			results_len = 1;
-			} else if (results_len == 2) {
-			maxDisplayFigure(results[0], RESULTS_START_DIGIT + 2, 2, 1);
-			maxDisplayFigure(results[1], RESULTS_START_DIGIT, 2, 1);
-
-			} else if ( die_size < 10 && results_len <= 4) {
-			if (results_len == 3) {
-				maxDisplayFigure(0, RESULTS_START_DIGIT, 1, 0);
-				maxDisplayFigure(results[0], RESULTS_START_DIGIT + 1, 1, 1);
-				maxDisplayFigure(results[1], RESULTS_START_DIGIT + 2, 1, 1);
-				maxDisplayFigure(results[2], RESULTS_START_DIGIT + 3, 1, 1);
-				} else {
-				maxDisplayFigure(results[0], RESULTS_START_DIGIT + 0, 1, 1);
-				maxDisplayFigure(results[1], RESULTS_START_DIGIT + 1, 1, 1);
-				maxDisplayFigure(results[2], RESULTS_START_DIGIT + 2, 1, 1);
-				maxDisplayFigure(results[3], RESULTS_START_DIGIT + 3, 1, 1);
+				maxDisplayFigure(0, RESULTS_START_DIGIT, 4, 1, 1);
+				maxDisplayFigure(results[0], RESULTS_START_DIGIT + 1, 3, 1, 1);
+		} else if (results_len == 2) {
+			for (i = 0; i < results_len; i++) {
+				if (results[i] == 100) maxDisplayFigure(results[i], RESULTS_START_DIGIT + 2*i, 2, 1, 0);
+				else maxDisplayFigure(results[i], RESULTS_START_DIGIT + 2*i, 2, 1, 1);
 			}
 
-			// 3 or more dice where size > 9:
+		} else if ( die_size < 11 && results_len <= 4) {
+			if (results_len == 3) {
+				maxDisplayFigure(0, RESULTS_START_DIGIT, 1, 0, 1);
+				for (i = 0; i < results_len; i++) {
+					if (results[i] == 10) maxDisplayFigure(results[i], RESULTS_START_DIGIT + 1 + i, 1, 1, 0);
+					else maxDisplayFigure(results[i], RESULTS_START_DIGIT + 1 + i, 1, 1, 1);
+				}
 			} else {
+				for (i = 0; i < results_len; i++) {
+					if (results[i] == 10) maxDisplayFigure(results[i], RESULTS_START_DIGIT + i, 1, 1, 0);
+					else maxDisplayFigure(results[i], RESULTS_START_DIGIT + i, 1, 1, 1);
+				}
+			}
+
+			
+// 			if (results_len == 3) {
+// 				maxDisplayFigure(0, RESULTS_START_DIGIT, 1, 0, 1);
+// 				maxDisplayFigure(results[0], RESULTS_START_DIGIT + 1, 1, 1, 1);
+// 				maxDisplayFigure(results[1], RESULTS_START_DIGIT + 2, 1, 1, 1);
+// 				maxDisplayFigure(results[2], RESULTS_START_DIGIT + 3, 1, 1, 1);
+// 			} else {
+// 				maxDisplayFigure(results[0], RESULTS_START_DIGIT + 0, 1, 1, 1);
+// 				maxDisplayFigure(results[1], RESULTS_START_DIGIT + 1, 1, 1, 1);
+// 				maxDisplayFigure(results[2], RESULTS_START_DIGIT + 2, 1, 1, 1);
+// 				maxDisplayFigure(results[3], RESULTS_START_DIGIT + 3, 1, 1, 1);
+// 			}
+
+			// 3 or more dice where size > 9:
+		} else {
 			if (results_scroller_counter < 10) {
-				maxDisplayFigure(results_scroller_counter, RESULTS_START_DIGIT, 1, 1);
-				maxDisplayFigure(0, RESULTS_START_DIGIT + 1, 1, 0);
-				maxDisplayFigure(results[results_scroller_counter - 1], RESULTS_START_DIGIT + 2, 2, 0);
-				} else {
-				maxDisplayFigure(results_scroller_counter, RESULTS_START_DIGIT, 2, 1);
-				maxDisplayFigure(results[results_scroller_counter - 1], RESULTS_START_DIGIT + 2, 2, 0);
+				maxDisplayFigure(results_scroller_counter, RESULTS_START_DIGIT, 1, 1, 1);
+				maxDisplayFigure(0, RESULTS_START_DIGIT + 1, 1, 0, 1);
+				
+				if (results[results_scroller_counter - 1] == 100)  maxDisplayFigure(results[results_scroller_counter - 1], RESULTS_START_DIGIT + 1, 3, 0, 1);
+				else maxDisplayFigure(results[results_scroller_counter - 1], RESULTS_START_DIGIT + 2, 2, 0, 1);
+			} else {
+				if (results_scroller_counter == 100) maxDisplayFigure(results_scroller_counter, RESULTS_START_DIGIT, 2, 1, 0);
+				else maxDisplayFigure(results_scroller_counter, RESULTS_START_DIGIT, 2, 1, 1);
+				
+				if (results[results_scroller_counter - 1] == 100)  maxDisplayFigure(results[results_scroller_counter - 1], RESULTS_START_DIGIT + 2, 2, 0, 0);
+				else maxDisplayFigure(results[results_scroller_counter - 1], RESULTS_START_DIGIT + 2, 2, 0, 1);
 			}
 		}
 
-		} else {
-		maxDisplayFigure(results_sum, RESULTS_START_DIGIT, 4, 0);
+	} else {
+		if (results_sum == 10000) {
+			maxDisplayFigure(0, RESULTS_START_DIGIT, 4, 0, 0);
+			} else {
+			maxDisplayFigure(results_sum, RESULTS_START_DIGIT, 4, 0, 1);
+		}
+
 	}
 }
 
 void init() {
+	uint8_t aux;
 	rng_timer_setup();
 	display_update_timer_setup();
 	polling_timer_setup();
 	
 	pin_setup();
+	
+	// update encoder states. 
+	aux = PIND;
+	encoder1_state |= (((aux >> (PIND2 - 1)) & 0x02) | ((aux >> PIND3) & 0x01) ) & 0x0f;
+	encoder2_state |= (((aux >> (PIND4 - 1)) & 0x02) | ((aux >> PIND5) & 0x01) ) & 0x0f;
+	encoder1_state <<= 2;
+	encoder2_state <<= 2;
+	encoder1_state |= (((aux >> (PIND2 - 1)) & 0x02) | ((aux >> PIND3) & 0x01) ) & 0x0f;
+	encoder2_state |= (((aux >> (PIND4 - 1)) & 0x02) | ((aux >> PIND5) & 0x01) ) & 0x0f;
+	number_of_dice = 2;
+	die_size = 6;
+	
 	check_inputs();
 
-
-
 	cli();
-
 	serial_comm_setup();
-
-
-// 	// debug magic:
-// 	stackcount = StackCount();
-// 
-// 	USART_Transmit(0xAA);
-// 	USART_Transmit(stackcount >> 8);
-// 	USART_Transmit(stackcount);
-// 	USART_Transmit(0xBB);
-// 	transmit_freeRam();
-// 	USART_Transmit(0xFF);
+	display_setup(0x0D);
 	
-	//adc_setup();
-
-
-	display_setup(0xFF);
-
-
 	preinit_RNG();
-
-
-	// enable interrupts
+	status.luck = 0;
+	
+	set_sleep_mode(SLEEP_MODE_IDLE);
 	sei();
 }
 
@@ -367,10 +531,17 @@ void preinit_RNG() {
 	seed ^= noise << 16;
 	
 	// sample adc noice
+	seed ^= get_analog_noise(2);
 	
 	// wait for a adc noise amount
 	
+	
+
 	// get new noise
+	seed ^= get_analog_noise(1);
+
+	noise ^= TCNT1;
+	seed ^= noise << 16;
 	
 // 	USART_Transmit(0xBE);
 // 	USART_Transmit(0xEF);
@@ -405,7 +576,7 @@ void finalize_RNG_init() {
 	// sample adc noice
 	
 	for (i = 0; i < 8; i++) {
-		noise = get_analog_noise();
+		noise = get_analog_noise(4);
 		seed ^= noise;
 // 		
 // 		USART_Transmit(0xFF);
@@ -429,6 +600,7 @@ void finalize_RNG_init() {
 	USART_Transmit(seed);
 		
 	init_tinymt(seed);
+	srandom(seed);
 
 	
 	status.rng_ok = 1;
@@ -490,12 +662,6 @@ void pin_setup() {
 	// pins: here, adc: in adc init function.
 }
 
-// void spi_setup() {
-// 	// pull up chip select / ss / load: 
-// 	BITBANG_PORT |= _BV(BITBANG_PORT2);
-// 	SPCR = _BV(
-// }
-
 void display_setup(uint8_t brightness) {
 	uint8_t numbers[8] = {1, 8, 2, 8, 3, 8, 4, 8}; // some random numbers for testing.
 
@@ -507,16 +673,8 @@ void display_setup(uint8_t brightness) {
 	maxUnShutdown();
 }
 
-void adc_setup() {
-	
-	// no setup really required, acquire noise, then shut down stuff ok?
-	
-	
-}
-
 void read_adc(uint8_t pin) {
-	uint8_t temp;
-	// TODO
+	// TODO: temperature
 	// admux,	mux3..0 = 1000 => temperature sensor.
 	// requires 1.1v internal reference selection
 
@@ -526,17 +684,15 @@ void read_adc(uint8_t pin) {
 	ADMUX &= 0xF0; // mux bits are the lower nibble
 
 
-	// pins 3 4 5 are normal pins. 
+	// pins 0 1 2 3 4 5 are normal pins. 
 	if (pin == 8) { 
-		adc_result = 0xdeadc0de;		
+		adc_result = 0xc0de; // so that nothing weird happens if we try to read temperature with wrong reference voltage. 
 	} else {
 		ADMUX |= 0x0F & pin; 
 		ADCSRA |= _BV(ADEN); // enable adc
 		ADCSRA |= _BV(ADSC); // start adconversion
 	
-		while (ADCSRA & _BV(ADSC)) {
-			adc_result++;
-		}
+		while (ADCSRA & _BV(ADSC));
 
 		adc_result = ADC;
 	}
@@ -547,32 +703,59 @@ void serial_comm_setup() {
 	// See data sheet and serial.h.
 }
 
-uint32_t get_analog_noise() {
-	static uint32_t noise = 87063037;
-	uint32_t temp;
+uint8_t get_analog_noise_8(uint8_t passes) {
+	static uint8_t noise = 0xAA;
+	uint8_t temp;
 	uint8_t i, j, k;
-
-	for (k = 0; k < 4; k++) {
-	for (i = 3; i < 6; i++) {
-		for (j = 0; j < 32; j++) {
+	
+	for (k = 0; k < passes; k++) {
+		for (i = 0; i < 6; i++) {
 			read_adc(i);
 			temp = adc_result;
-			temp <<= j;
+			temp <<= 4;
+			
+			i++;
+			
+			read_adc(i);
+			temp = adc_result;
+			
 			noise ^= temp;
 		}
-	}}
-	
+	}
+
+// 	for (k = 0; k < passes; k++) { // do it more. 
+// 		for (i = 0; i < 6; i++) { // sample once from each adc pin
+// 			for (j = 0; j < 8; j++) { // roll around 8 times
+// 				read_adc(i);
+// 				temp = adc_result;
+// 				temp <<= j;
+// 				noise ^= temp;
+// 			}
+// 		}
+// 	}
+// 	
 	return noise;
 }
 
 
-//not used for now. blinks.
-// void cool_visual_effects(uint8_t count) {
-//     uint8_t i;
-//     for (i = 0; i < count; i++) {
-//         maxEnterTestMode();
-//         _delay_ms(100);
-//         maxExitTestMode();
-//         _delay_ms(100);
-//     }
-// }
+
+
+uint32_t get_analog_noise(uint8_t passes) {
+	static uint32_t noise = 87063037;
+	uint32_t temp;
+	uint8_t i, j, k;
+
+	for (k = 0; k < passes; k++) {
+		for (i = 0; i < 6; i++) {
+			for (j = 0; j < 32; j++) {
+				read_adc(i);
+				temp = adc_result;
+				temp <<= j;
+				noise ^= temp;
+			}
+		}
+	}
+		
+	return noise;	
+}
+	

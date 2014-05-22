@@ -11,6 +11,7 @@
 #define BAD_SEED 0
 #define RNG_NOT_READY 0
 #define RNG_READY 1
+#define LUCK_FACTOR 0.5	
 
 #define ENC_COUNTER_TUNE_FACTOR 1
 
@@ -18,12 +19,12 @@
 #define DIE_SIZE_START_DIGIT 7
 #define N_OF_DICE_START_DIGIT 5
 
-#define MAX_DIE_SIZE 99
+#define MAX_DIE_SIZE 100
 #define MIN_DIE_SIZE 2 
-#define MAX_THROWS 99 
+#define MAX_THROWS 100 
 #define MIN_THROWS 1
 
-#define RANDOMNESS_TESTING_MODE 0
+#define RANDOMNESS_TESTING_MODE 1
 
 
 #include <stdint.h> 
@@ -54,7 +55,8 @@ void check_inputs();
 void throw_dice();
 
 void read_adc(uint8_t pin);
-uint32_t get_analog_noise();
+uint32_t get_analog_noise(uint8_t passes);
+uint8_t get_analog_noise_8(uint8_t passes);
 
 
 int freeRam();
